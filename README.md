@@ -5,16 +5,18 @@
   - `vocoder`模型推理基于ONNXRuntime
 
 #### 运行步骤
-1. 安装`requirements.txt`
+1. 下载`resources`, [Google Drive](https://drive.google.com/file/d/1q3NCydNhFeU2cpLUgevidCHeSzclK0a7/view?usp=sharing), 解压到RapidTTS2目录下
+
+2. 安装`requirements.txt`
    ```bash
    pip install -r requirements.txt -i https://pypi.douban.com/simple/
    ```
 
-2. 运行`tts2.py`
+3. 运行`tts2.py`
    ```bash
    python tts2.py
    ```
-3. 运行日志如下:
+4. 运行日志如下:
    ```text
    初始化前处理部分
     frontend done!
