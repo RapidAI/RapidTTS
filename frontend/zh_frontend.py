@@ -51,7 +51,7 @@ class Frontend():
         self.vocab_phones = {}
         self.vocab_tones = {}
         if phone_vocab_path:
-            with open(phone_vocab_path, 'rt') as f:
+            with open(phone_vocab_path, 'rt', encoding='utf-8') as f:
                 phn_id = [line.strip().split() for line in f.readlines()]
             for phn, id in phn_id:
                 self.vocab_phones[phn] = int(id)
