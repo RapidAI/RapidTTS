@@ -14,7 +14,7 @@
 
 
 #### 运行步骤
-1. 下载`resources`, [Google Drive](https://drive.google.com/file/d/1q3NCydNhFeU2cpLUgevidCHeSzclK0a7/view?usp=sharing), 解压到RapidTTS2目录下
+1. 下载`resources`, [Google Drive](https://drive.google.com/file/d/1q3NCydNhFeU2cpLUgevidCHeSzclK0a7/view?usp=sharing) | [百度网盘,提取码:kmcf](https://pan.baidu.com/s/1MGbaS6e_pFqrfIc5OVjWjg), 解压到RapidTTS2目录下
 
 2. 安装`requirements.txt`
    ```bash
