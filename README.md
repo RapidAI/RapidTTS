@@ -3,7 +3,7 @@
 - 基于[PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech)下的[TTS2](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/demos/text_to_speech/README_cn.md)整理而来
 - 共分为三步，`frontend`、`acoustic`、`vocoder`
   - 其中`acoustic`这一步模型推理目前基于`PaddlePaddle`,
-  - `vocoder`模型推理基于ONNXRuntime
+  - `vocoder`模型推理基于`ONNXRuntime`
 - 其中PaddleSpeech中提供的预训练模型可以参见[link](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/demos/text_to_speech/README_cn.md#4-%E9%A2%84%E8%AE%AD%E7%BB%83%E6%A8%A1%E5%9E%8B)。在RapidTTS2中使用的是:
 
     |主要部分|具体模型|支持语言|
