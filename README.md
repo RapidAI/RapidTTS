@@ -1,4 +1,4 @@
-#### 说明
+#### RapidTTS2
 - **支持合成语言**: 中文和数字(`其他语言后续有空会搞搞`)
 - 基于[PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech)下的[TTS2](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/demos/text_to_speech/README_cn.md)整理而来
 - 共分为三步，`frontend`、`acoustic`、`vocoder`
@@ -11,7 +11,9 @@
     |声学模型|speedyspeech_csmsc|zh|
     |声码器|pwgan_csmsc|zh|
 
-
+#### 更新日志
+##### 🎨2022-04-08 update
+- 尝试采用OpenVINO推理引擎，但是目前模型尚未转换成功，具体尝试过程参见:[Paddle模型尝试转换](https://github.com/RapidAI/RapidTTS2/wiki/Paddle%E6%A8%A1%E5%9E%8B%E5%B0%9D%E8%AF%95%E8%BD%AC%E6%8D%A2)
 
 #### 运行步骤
 1. 下载`resources`, [Google Drive](https://drive.google.com/file/d/1q3NCydNhFeU2cpLUgevidCHeSzclK0a7/view?usp=sharing) | [百度网盘,提取码:kmcf](https://pan.baidu.com/s/1MGbaS6e_pFqrfIc5OVjWjg), 解压到RapidTTS2目录下
