@@ -2,9 +2,9 @@
 - **支持合成语言**: 中文和数字(`其他语言后续有空会搞搞`)
 - 基于[PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech)下的[TTS2](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/demos/text_to_speech/README_cn.md)整理而来
 - 共分为三步，`frontend`、`acoustic`、`vocoder`
-  - 其中`acoustic`这一步模型推理目前基于`PaddlePaddle`,
+  - `acoustic`模型推理目前基于`PaddlePaddle`
   - `vocoder`模型推理基于`ONNXRuntime`
-- 其中PaddleSpeech中提供的预训练模型可以参见[link](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/demos/text_to_speech/README_cn.md#4-%E9%A2%84%E8%AE%AD%E7%BB%83%E6%A8%A1%E5%9E%8B)。在RapidTTS2中使用的是:
+- 其中PaddleSpeech中提供的预训练模型可以参见[link](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/demos/text_to_speech/README_cn.md#4-%E9%A2%84%E8%AE%AD%E7%BB%83%E6%A8%A1%E5%9E%8B)。在RapidTTS中使用的是:
 
     |主要部分|具体模型|支持语言|
     |:---|:---|:---|
@@ -12,8 +12,13 @@
     |声码器|pwgan_csmsc|zh|
 
 #### 更新日志
-##### 🎨2022-04-08 update
+#### ✨2022-04-09 update
+- 添加模型转换说明文档([模型转换](./convert_model.md))
+
+##### 2022-04-08 update
 - 尝试采用OpenVINO推理引擎，但是目前模型尚未转换成功，具体尝试过程参见:[Paddle模型尝试转换](https://github.com/RapidAI/RapidTTS2/wiki/Paddle%E6%A8%A1%E5%9E%8B%E5%B0%9D%E8%AF%95%E8%BD%AC%E6%8D%A2)
+
+#### [模型转换](./convert_model.md)
 
 #### 运行步骤
 1. 下载`resources`, [Google Drive](https://drive.google.com/file/d/1q3NCydNhFeU2cpLUgevidCHeSzclK0a7/view?usp=sharing) | [百度网盘,提取码:kmcf](https://pan.baidu.com/s/1MGbaS6e_pFqrfIc5OVjWjg), 解压到RapidTTS2目录下
