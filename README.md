@@ -2,9 +2,9 @@
 
 |目录名称|推理引擎|支持语言|
 |:---:|:---:|:---:|
-|`csmsc_tts2`|Paddle+ONNXRuntime|中文和数字|
-|`csmsc_tts3`|ONNXRuntime|中文和数字|
-|`ljspeech_tts3`|ONNXRuntime|中文和数字|
+|[csmsc_tts2](./csmsc_tts2)|Paddle+ONNXRuntime|中文和数字|
+|[csmsc_tts3](./csmsc_tts3)|ONNXRuntime|中文和数字|
+|[ljspeech_tts3](./ljspeech_tts3)|ONNXRuntime|中文和数字|
 
 ### 更新日志
 
