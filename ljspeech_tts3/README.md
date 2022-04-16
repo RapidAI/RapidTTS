@@ -58,6 +58,10 @@
    ```bash
    python tts3.py
    ```
+   or
+   ```bash
+   bash main.sh
+   ```
 
 4. 运行日志如下:
    ```text
