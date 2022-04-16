@@ -4,7 +4,7 @@
 |:---:|:---:|:---:|
 |[csmsc_tts2](./csmsc_tts2)|Paddle+ONNXRuntime|中文和数字|
 |[csmsc_tts3](./csmsc_tts3)|ONNXRuntime|中文和数字|
-|[ljspeech_tts3](./ljspeech_tts3)|ONNXRuntime|中文和数字|
+|[ljspeech_tts3](./ljspeech_tts3)|ONNXRuntime|英文|
 
 ### 更新日志
 
