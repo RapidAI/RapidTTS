@@ -1,4 +1,6 @@
 __pycache__/
 *.pyc
 
-resources/
+csmsc_tts2/resources/
+csmsc_tts3/resources/
+ljspeech_tts3/resources/
