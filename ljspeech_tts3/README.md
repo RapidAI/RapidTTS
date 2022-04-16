@@ -1,4 +1,4 @@
-### csmsc_tts3
+### ljspeech_tts3
 - **支持合成语言**: 英文字母
 - 基于[PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech)下的[ljspeech-TTS3](https://github.com/PaddlePaddle/PaddleSpeech/blob/develop/examples/ljspeech/tts3/README.md)整理而来
 - 整个推理引擎只采用`ONNXRuntime`
