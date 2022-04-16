@@ -21,6 +21,8 @@ from timer import timer
 
 from syn_utils import get_frontend, get_sentences
 
+root_dir = str(Path.cwd())
+
 
 def str2bool(str):
     return True if str.lower() == 'true' else False
@@ -128,85 +130,61 @@ def ort_predict(args):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Infernce with onnxruntime.")
+
     # acoustic model
-    parser.add_argument(
-        '--am',
-        type=str,
-        default='fastspeech2_csmsc',
-        choices=[
-            'fastspeech2_csmsc',
-        ],
-        help='Choose acoustic model type of tts task.')
-    parser.add_argument('--am_onnx', type=str)
-    parser.add_argument(
-        "--phones_dict", type=str, default=None, help="phone vocabulary file.")
-    parser.add_argument(
-        "--tones_dict", type=str, default=None, help="tone vocabulary file.")
+    parser.add_argument('--am', type=str,
+                        default='fastspeech2_csmsc',
+                        help='Choose acoustic model type of tts task.')
+    parser.add_argument('--am_onnx', type=str,
+                        default='fastspeech2_csmsc_onnx_0.2.0/fastspeech2_csmsc.onnx')
+
+    parser.add_argument("--phones_dict", type=str,
+                        default='resources/fastspeech2_csmsc_onnx_0.2.0/phone_id_map.txt',
+                        help="phone vocabulary file.")
+
+    parser.add_argument("--tones_dict", type=str,
+                        default=None,
+                        help="tone vocabulary file.")
 
     # voc
-    parser.add_argument(
-        '--voc',
-        type=str,
-        default='hifigan_csmsc',
-        choices=['hifigan_csmsc', 'mb_melgan_csmsc'],
-        help='Choose vocoder type of tts task.')
-    parser.add_argument('--voc_onnx', type=str)
+    parser.add_argument('--voc', type=str,
+                        default='hifigan_csmsc',
+                        help='Choose vocoder type of tts task.')
+
+    parser.add_argument('--voc_onnx', type=str,
+                        default='hifigan_csmsc.onnx')
 
     # other
-    parser.add_argument(
-        "--inference_dir", type=str, help="dir to save inference models")
-    parser.add_argument(
-        "--text",
-        type=str,
-        help="text to synthesize, a 'utt_id sentence' pair per line")
-    parser.add_argument("--output_dir", type=str, help="output dir")
-    parser.add_argument(
-        '--lang',
-        type=str,
-        default='zh',
-        help='Choose model language. zh or en')
+    parser.add_argument("--inference_dir", type=str,
+                        default=f"{root_dir}/resources",
+                        help="dir to save inference models")
+
+    parser.add_argument("--text", type=str,
+                        default='csmsc_test.txt')
+
+    parser.add_argument("--output_dir", type=str,
+                        default='infer_result')
+
+    parser.add_argument('--lang', type=str,
+                        default='zh',
+                        help='Choose model language. zh or en')
 
     # inference
-    parser.add_argument(
-        "--use_trt",
-        type=str2bool,
-        default=False,
-        help="Whether to use inference engin TensorRT.", )
+    parser.add_argument("--use_trt",
+                        type=str2bool,
+                        default=False,
+                        help="Whether to use inference engin TensorRT.", )
 
-    parser.add_argument(
-        "--device",
-        default="gpu",
-        choices=["gpu", "cpu"],
-        help="Device selected for inference.", )
-    parser.add_argument('--cpu_threads', type=int, default=1)
+    parser.add_argument("--device", default="cpu",
+                        choices=["gpu", "cpu"])
+
+    parser.add_argument('--cpu_threads', type=int, default=2)
 
     args, _ = parser.parse_known_args()
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     return args
 
 
-def main():
-    args = parse_args()
-
-    root_dir = str(Path.cwd())
-    args.inference_dir = f"{root_dir}/resources"
-
-    args.am = "fastspeech2_csmsc"
-    args.am_onnx = "fastspeech2_csmsc_onnx_0.2.0/fastspeech2_csmsc.onnx"
-
-    args.voc = "hifigan_csmsc"
-    args.voc_onnx = "hifigan_csmsc.onnx"
-
-    args.output_dir = "infer_result"
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
-    args.text = "csmsc_test.txt"
-    args.phones_dict = "resources/fastspeech2_csmsc_onnx_0.2.0/phone_id_map.txt"
-
-    args.device = "cpu"
-    args.cpu_threads = 2
-
-    ort_predict(args)
-
-
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    ort_predict(args)
