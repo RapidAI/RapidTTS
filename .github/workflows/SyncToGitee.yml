@@ -13,8 +13,8 @@ jobs:
       - name: Mirror the Github organization repos to Gitee.
         uses: Yikun/hub-mirror-action@master
         with:
-          src: 'github/RapidAI'
-          dst: 'gitee/RapidAI'
+          src: 'github/RapidAI/RapidTTS'
+          dst: 'gitee/RapidAI/RapidTTS'
           dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
           dst_token:  ${{ secrets.GITEE_TOKEN }}
           force_update: true
