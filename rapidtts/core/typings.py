@@ -8,6 +8,7 @@ from enum import Enum
 class TTSModel(Enum):
     MELO_ONNX = "melo_onnx"
     KOKORO_ONNX = "kokoro_onnx"
+    MOSS_NANO_ONNX = "moss_nano_onnx"
 
 
 class TTSLanguage(Enum):

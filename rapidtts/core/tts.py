@@ -55,6 +55,11 @@ class RapidTTS:
 
             return KokoroONNXBackend(**kwargs)
 
+        if model == TTSModel.MOSS_NANO_ONNX:
+            from ..backends.moss_nano_onnx.backend import MOSSNanoBackend
+
+            return MOSSNanoBackend(**kwargs)
+
         raise ValueError(f"Unsupported model: {model}")
 
     def synthesize(self, request: SynthesisRequest) -> SynthesisResponse:
@@ -70,6 +75,8 @@ class RapidTTS:
     def get_capability(self) -> ModelCapability:
         get_backend_capability = getattr(self.backend, "get_capability", None)
         if get_backend_capability is None:
-            raise NotImplementedError("Current backend does not expose capability metadata")
+            raise NotImplementedError(
+                "Current backend does not expose capability metadata"
+            )
 
         return get_backend_capability()
