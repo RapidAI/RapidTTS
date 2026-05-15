@@ -200,11 +200,7 @@ def test_melo_backend_normalize_request_adds_default_voice() -> None:
     assert request.sample_rate == 44100
     assert request.audio_format == "wav"
     assert request.voice == "zf_001"
-    assert request.extras == {
-        "sdp_ratio": 0.2,
-        "noise_scale": 0.6,
-        "noise_scale_w": 0.8,
-    }
+    assert request.extras == {}
 
 
 def test_melo_backend_normalize_request_allows_voice_override() -> None:

@@ -80,13 +80,6 @@ class MeloONNXBackend(BaseTTSBackend):
 
     def normalize_request(self, request: SynthesisRequest) -> SynthesisRequest:
         defaults = self.request_defaults
-        extras = {
-            "sdp_ratio": defaults["sdp_ratio"],
-            "noise_scale": defaults["noise_scale"],
-            "noise_scale_w": defaults["noise_scale_w"],
-            **request.extras,
-        }
-
         return SynthesisRequest(
             text=request.text,
             language=request.language or TTSLanguage(defaults["language"]),
@@ -98,5 +91,5 @@ class MeloONNXBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=extras,
+            extras=request.extras or defaults.get("extras", {}),
         )

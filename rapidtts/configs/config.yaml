@@ -12,10 +12,10 @@ moss_nano_onnx:
     voice: Junhao
     speed: 1.0
     sample_rate: 48000
-    max_phoneme_length: 510
     audio_format: wav
-    prompt_text: ''
-    prompt_audio_path: null
+    extras:
+      prompt_text: ''
+      prompt_audio_path: null
 
 kokoro_onnx:
   init:
@@ -28,8 +28,10 @@ kokoro_onnx:
     voice: zf_001
     speed: 1.0
     sample_rate: 24000
-    max_phoneme_length: 510
     audio_format: wav
+    extras:
+      max_phoneme_length: 510
+
 
 melo_onnx:
   init:
@@ -43,6 +45,7 @@ melo_onnx:
     speed: 1.0
     sample_rate: 44100
     audio_format: wav
-    sdp_ratio: 0.2
-    noise_scale: 0.6
-    noise_scale_w: 0.8
+    extras:
+      sdp_ratio: 0.2
+      noise_scale: 0.6
+      noise_scale_w: 0.8

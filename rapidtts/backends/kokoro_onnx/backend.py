@@ -36,9 +36,12 @@ class KokoroONNXBackend(BaseTTSBackend):
             KokoroONNXConfig(model_path=str(tts_model_path), device=device)
         )
 
+        max_phoneme_length = self.request_defaults["extra_params"].get(
+            "max_phoneme_length", 300
+        )
         self.preprocessor = KokoroONNXPreprocessor(
             self.model_root_dir,
-            max_phoneme_length=self.request_defaults.get("max_phoneme_length", 300),
+            max_phoneme_length=max_phoneme_length,
             voices=self.voices,
             text_normalizer_type=TextNormalizerType(text_normalizer_type),
         )
@@ -86,8 +89,6 @@ class KokoroONNXBackend(BaseTTSBackend):
 
     def normalize_request(self, request: SynthesisRequest) -> SynthesisRequest:
         defaults = self.request_defaults
-        extras = {**request.extras}
-
         return SynthesisRequest(
             text=request.text,
             language=request.language or TTSLanguage(defaults["language"]),
@@ -99,5 +100,5 @@ class KokoroONNXBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=extras,
+            extras=request.extras,
         )
