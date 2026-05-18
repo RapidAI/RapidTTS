@@ -6,11 +6,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, List
 
+import librosa
 import numpy as np
 import onnxruntime as ort
 import sentencepiece as spm
-import torch
-import torchaudio
+import soundfile as sf
 
 from ...common.io import load_json
 from ...common.text.normalization import create_text_normalizer
@@ -151,30 +151,40 @@ class MOSSNanoPreprocessor:
         return prompt_audio_codes
 
     def _load_reference_audio(self, reference_audio_path: str | Path) -> np.ndarray:
-        waveform, sample_rate = torchaudio.load(
-            str(Path(reference_audio_path).expanduser().resolve())
+        audio_path = str(Path(reference_audio_path).expanduser().resolve())
+        waveform, sample_rate = sf.read(
+            audio_path,
+            dtype="float32",
+            always_2d=True,
         )
-        waveform = waveform.to(torch.float32)
+        waveform = waveform.T
+
         target_sample_rate = int(self.codec_meta["codec_config"]["sample_rate"])
         target_channels = int(self.codec_meta["codec_config"]["channels"])
         if sample_rate != target_sample_rate:
-            waveform = torchaudio.functional.resample(
-                waveform, sample_rate, target_sample_rate
+            waveform = librosa.resample(
+                waveform.astype(np.float32, copy=False),
+                orig_sr=sample_rate,
+                target_sr=target_sample_rate,
+                axis=-1,
+                res_type="soxr_hq",
+                fix=True,
+                scale=False,
             )
+
         current_channels = int(waveform.shape[0])
         if current_channels == target_channels:
             pass
         elif current_channels == 1 and target_channels > 1:
-            waveform = waveform.repeat(target_channels, 1)
+            waveform = np.repeat(waveform, target_channels, axis=0)
         elif current_channels > 1 and target_channels == 1:
-            waveform = waveform.mean(dim=0, keepdim=True)
+            waveform = waveform.mean(axis=0, keepdims=True)
         else:
             raise ValueError(
                 f"Unsupported reference audio channel conversion: {current_channels} -> {target_channels}"
             )
-        return (
-            waveform.unsqueeze(0).detach().cpu().numpy().astype(np.float32, copy=False)
-        )
+
+        return waveform[None, ...].astype(np.float32, copy=False)
 
     def list_builtin_voices(self) -> list[dict[str, Any]]:
         return list(self.manifest["builtin_voices"])
