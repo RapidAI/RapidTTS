@@ -10,7 +10,7 @@ from ...common.errors import BackendNotLoadedError
 from ...core.backend import BaseTTSBackend
 from ...core.request import SynthesisRequest
 from ...core.response import SynthesisResponse
-from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage
+from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage, TTSModel
 from .model import MeloONNXConfig, MeloONNXModel
 from .postprocess import MeloONNXPostprocessor
 from .preprocess import MeloONNXPreprocessor
@@ -70,7 +70,7 @@ class MeloONNXBackend(BaseTTSBackend):
     def get_capability(self) -> ModelCapability:
         defaults = self.request_defaults
         return ModelCapability(
-            name="melo_onnx",
+            name=TTSModel.MELO_ONNX.value,
             languages=[TTSLanguage.ZH_MIX_EN.value],
             default_language=defaults["language"],
             voices=self.get_voices(),

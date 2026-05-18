@@ -10,7 +10,7 @@ from ...common.errors import BackendNotLoadedError
 from ...core.backend import BaseTTSBackend
 from ...core.request import SynthesisRequest
 from ...core.response import SynthesisResponse
-from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage
+from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage, TTSModel
 from .model import MOSSNanoModel
 from .postprocess import MOSSNanoPostprocessor
 from .preprocess import MOSSNanoPreprocessor
@@ -69,7 +69,7 @@ class MOSSNanoBackend(BaseTTSBackend):
     def get_capability(self) -> ModelCapability:
         defaults = self.request_defaults
         return ModelCapability(
-            name="melo_onnx",
+            name=TTSModel.MOSS_NANO_ONNX.value,
             languages=[TTSLanguage.ZH_MIX_EN.value],
             default_language=defaults["language"],
             voices=self.get_voices(),
@@ -79,15 +79,6 @@ class MOSSNanoBackend(BaseTTSBackend):
 
     def normalize_request(self, request: SynthesisRequest) -> SynthesisRequest:
         defaults = self.request_defaults
-        extras = {
-            "prompt_text": defaults.get("prompt_text"),
-            "prompt_audio_path": defaults.get(
-                "prompt_audio_path",
-                "/Users/joshuawang/projects/_self/RapidTTS/MOSS-TTS-Nano-main/assets/audio/zh_3.wav",
-            ),
-            **request.extras,
-        }
-
         return SynthesisRequest(
             text=request.text,
             language=request.language or TTSLanguage(defaults["language"]),
@@ -99,5 +90,5 @@ class MOSSNanoBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=extras,
+            extras=request.extras or defaults.get("extras", {}),
         )

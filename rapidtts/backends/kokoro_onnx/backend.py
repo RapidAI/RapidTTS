@@ -10,7 +10,7 @@ from ...common.errors import BackendNotLoadedError
 from ...core.backend import BaseTTSBackend
 from ...core.request import SynthesisRequest
 from ...core.response import SynthesisResponse
-from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage
+from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage, TTSModel
 from .model import KokoroONNXModel
 from .postprocess import KokoroONNXPostprocessor
 from .preprocess import KokoroONNXPreprocessor
@@ -75,7 +75,7 @@ class KokoroONNXBackend(BaseTTSBackend):
     def get_capability(self) -> ModelCapability:
         defaults = self.request_defaults
         return ModelCapability(
-            name="kokoro_onnx",
+            name=TTSModel.KOKORO_ONNX.value,
             languages=[
                 TTSLanguage.ZH.value,
                 TTSLanguage.EN.value,
@@ -100,5 +100,5 @@ class KokoroONNXBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=request.extras,
+            extras=request.extras or defaults.get("extras", {}),
         )
