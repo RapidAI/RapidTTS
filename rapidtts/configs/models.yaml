@@ -1,3 +1,66 @@
+moss_nano_onnx:
+  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/master/models/moss/nano/onnx
+  local_dir: models/moss_nano_onnx
+  files:
+      - name: MOSS-Audio-Tokenizer-Nano-ONNX/codec_browser_onnx_meta.json
+        sha256: c40eb144a4f50453ac0437944cbdeee1467845b886e90197ff1eada1353303db
+      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_decode_full.onnx
+        sha256: 0fbbafe3fd4afa2a019af5c5ced204af6e2d1db044fa40f021525d2aee95b4ac
+      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_decode_shared.data
+        sha256: e69d52e0f4e84ca27850557ee54face46632d3a5a16c89bd246c7c408466dcad
+      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_decode_step.onnx
+        sha256: 9527c86a29e1837edec1f74db57d5eeaadb3a715af3382703566460afed25855
+      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.onnx
+        sha256: eadea4a645abdcf98714c7aead122ee2ce7da6e080f9f80b977cd1ca8e19473a
+      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.data
+        sha256: aa751265b2bab2887eac224484546b194875aa7494b607115439b3dc6b228a2c
+      - name: MOSS-TTS-Nano-100M-ONNX/browser_poc_manifest.json
+        sha256: 097d80e993dc29f0bae427590b4f77084a161cb578b50d82c29f455d5faa9eee
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_decode_step.onnx
+        sha256: 698cbc2fc1c2feca16e5895614ed52bbb32ded10f236c076f477b2e69abf32d8
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_global_shared.data
+        sha256: bce8312c3df6a44545302cae229b61054fe0672e0b252ba59cba47adeed831dc
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_local_cached_step.onnx
+        sha256: aa9035fefc1c138a951a8bcfc0374fb03a25f1ece67f7f7f53bce349b84a1dd5
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_local_decoder.onnx
+        sha256: 51aa754301b38550a5f9adda0ad93bd3dc95819afb511e6dcabf4a90b345a454
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_local_fixed_sampled_frame.onnx
+        sha256: 40cdb00efc171c450cf91468e01429caa41b0252222cd308e978f58fe354afa8
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_local_shared.data
+        sha256: bae7782032c0fb12490ab42afe009f87ae6c75a0f0596fc7b5c08e4d5ee93916
+      - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_prefill.onnx
+        sha256: d56126dcd0574c2f15d98fc6b35eda68d0386b5bd9c5e38e28548d6f2ea8f3db
+      - name: MOSS-TTS-Nano-100M-ONNX/tokenizer.model
+        sha256: c353ee1479b536bf414c1b247f5542b6607fb8ae91320e5af1781fee200fddff
+      - name: MOSS-TTS-Nano-100M-ONNX/tts_browser_onnx_meta.json
+        sha256: 1dacbf4d59732ae1fb1253139b70a4ca07415246fb6473919c9947d489a59e04
+      - name: assets/audio/en_2.wav
+        sha256: 959cce9498f2bae964ca67136c2c02c7174922813b69aa435b27ec8759b44992
+      - name: assets/audio/en_3.wav
+        sha256: 563544e54f6dd66b24a4494fa40b8f9debd7cceb50ae47a149c14bc3610c4aff
+      - name: assets/audio/en_4.wav
+        sha256: cdd4f0ba5a4c0499f5194f5767ffaa9e988ea912210e369f66e2812278ba45ff
+      - name: assets/audio/en_6.wav
+        sha256: 3383e1bf39b1458be79b1888a990059882aa1b36590bd7cd8aa02f355573d8d2
+      - name: assets/audio/en_7.wav
+        sha256: ce22219381aa6839b8fee475f03c640fd628c20b0fcdb8cc79509f04dc83f878
+      - name: assets/audio/en_8.wav
+        sha256: 582f8e1e3f3792d7b495e159c29a55bb95c4c46e90725c62807b4b12bf341603
+      - name: assets/audio/jp_2.wav
+        sha256: c44a65e55b7376a87607fdea5a6a5ab735c7aef2e007d1fc02a9f50d37bf11a4
+      - name: assets/audio/zh_1.wav
+        sha256: f64a53490acf7337358832d1da7c562e08e2f3caf4385727b318cdc4f4da50d2
+      - name: assets/audio/zh_10.wav
+        sha256: 53578fb5f8c53632569b700003b1ec941acd304af2e4061f6f4cf34d16baeaa5
+      - name: assets/audio/zh_11.wav
+        sha256: cffa7c5d91c28895caf51c38418af9651c82a4e16a8e4c04e10991bf80cc04cc
+      - name: assets/audio/zh_3.wav
+        sha256: 406d80c599da92573719c7236fd4a93a49c9a8c5c51872118a6444558249d70d
+      - name: assets/audio/zh_4.wav
+        sha256: 360724ce411ddc94e866fe98ee3161349836bba16037ed7f209a1e807f4fd7fd
+      - name: assets/audio/zh_6.wav
+        sha256: f618138a1bcb6833e9092cb06c8993c1299cd587eb4dabe61232a4ca93288ae3
+
 kokoro_onnx:
   base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/master/models/kokoro/onnx
   local_dir: models/kokoro_onnx

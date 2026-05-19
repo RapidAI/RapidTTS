@@ -99,10 +99,7 @@ class MOSSNanoPreprocessor:
         return len(self.encode_text(text))
 
     def resolve_prompt_audio_codes(
-        self,
-        *,
-        voice: str | None,
-        prompt_audio_path: str | Path | None,
+        self, *, voice: str | None, prompt_audio_path: str | Path | None
     ) -> list[list[int]]:
         if prompt_audio_path:
             return self.encode_reference_audio(prompt_audio_path)
