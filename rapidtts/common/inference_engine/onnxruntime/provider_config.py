@@ -2,12 +2,21 @@
 # @Author: SWHL
 # @Contact: liekkaskono@163.com
 import platform
+from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Dict, List, Tuple
 
 from onnxruntime import get_available_providers, get_device
 
 from ...logger import logger
+
+
+class OrtBackend(Enum):
+    CPU = "cpu"
+    CUDA = "cuda"
+    DML = "dml"
+    CANN = "cann"
+    COREML = "coreml"
 
 
 class EP(Enum):
@@ -18,90 +27,55 @@ class EP(Enum):
     COREML_EP = "CoreMLExecutionProvider"
 
 
-class ProviderConfig:
-    def __init__(self, engine_cfg: Dict[str, Any]):
-        self.had_providers: List[str] = get_available_providers()
-        self.default_provider = self.had_providers[0]
+class IExecutionProvider(ABC):
+    @abstractmethod
+    def is_available(self) -> bool:
+        pass
 
-        self.cfg_use_cuda = engine_cfg.get("use_cuda", False)
-        self.cfg_use_dml = engine_cfg.get("use_dml", False)
-        self.cfg_use_cann = engine_cfg.get("use_cann", False)
-        self.cfg_use_coreml = engine_cfg.get("use_coreml", False)
+    @abstractmethod
+    def get_config(self) -> Dict[str, Any]:
+        pass
 
-        self.cfg = engine_cfg
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
 
-    def get_ep_list(self) -> List[Tuple[str, Dict[str, Any]]]:
-        results = [(EP.CPU_EP.value, self.cpu_ep_cfg())]
+    def print_log(self, log_list: List[str]):
+        for log_info in log_list:
+            logger.warning(log_info)
 
-        if self.is_cuda_available():
-            results.insert(0, (EP.CUDA_EP.value, self.cuda_ep_cfg()))
 
-        if self.is_dml_available():
-            logger.info(
-                "Windows 10 or above detected, try to use DirectML as primary provider"
-            )
-            results.insert(0, (EP.DIRECTML_EP.value, self.dml_ep_cfg()))
+class CPUExecutionProvider(IExecutionProvider):
+    def __init__(self, cfg, had_providers: List[str]):
+        self.cfg = cfg
+        self.had_providers = had_providers
+        self.default_provider = had_providers[0]
 
-        if self.is_cann_available():
-            logger.info("Try to use CANNExecutionProvider to infer")
-            results.insert(0, (EP.CANN_EP.value, self.cann_ep_cfg()))
+    def is_available(self) -> bool:
+        return True
 
-        if self.is_coreml_available():
-            logger.info("macOS/iOS detected, try to use CoreML as primary provider")
-            results.insert(0, (EP.COREML_EP.value, self.coreml_ep_cfg()))
+    def get_config(self) -> Dict[str, Any]:
+        return self.cfg[OrtBackend.CPU.value] or {}
 
-        return results
+    @property
+    def name(self) -> str:
+        return EP.CPU_EP.value
 
-    def cpu_ep_cfg(self) -> Dict[str, Any]:
-        return dict(self.cfg.cpu_ep_cfg)
 
-    def cuda_ep_cfg(self) -> Dict[str, Any]:
-        return dict(self.cfg.cuda_ep_cfg)
+class CUDAExecutionProvider(IExecutionProvider):
+    def __init__(self, cfg, had_providers: List[str]):
+        self.cfg = cfg
+        self.had_providers = had_providers
+        self.default_provider = had_providers[0]
 
-    def dml_ep_cfg(self) -> Dict[str, Any]:
-        if self.cfg.dm_ep_cfg is not None:
-            return self.cfg.dm_ep_cfg
-
-        if self.is_cuda_available():
-            return self.cuda_ep_cfg()
-        return self.cpu_ep_cfg()
-
-    def cann_ep_cfg(self) -> Dict[str, Any]:
-        return dict(self.cfg.cann_ep_cfg)
-
-    def coreml_ep_cfg(self) -> Dict[str, Any]:
-        return dict(self.cfg.coreml_ep_cfg)
-
-    def verify_providers(self, session_providers: Sequence[str]):
-        if not session_providers:
-            raise ValueError("Session Providers is empty")
-
-        first_provider = session_providers[0]
-
-        providers_to_check = {
-            EP.CUDA_EP: self.is_cuda_available,
-            EP.DIRECTML_EP: self.is_dml_available,
-            EP.CANN_EP: self.is_cann_available,
-            EP.COREML_EP: self.is_coreml_available,
-        }
-
-        for ep, check_func in providers_to_check.items():
-            if check_func() and first_provider != ep.value:
-                logger.warning(
-                    f"{ep.value} is available, but the inference part is automatically shifted to be executed under {first_provider}. "
-                )
-                logger.warning(f"The available lists are {session_providers}")
-
-    def is_cuda_available(self) -> bool:
-        if not self.cfg_use_cuda:
-            return False
-
+    def is_available(self) -> bool:
         CUDA_EP = EP.CUDA_EP.value
-        if get_device() == "GPU" and CUDA_EP in self.had_providers:
+        if get_device() == "GPU" and CUDA_EP in get_available_providers():
             return True
 
         logger.warning(
-            f"{CUDA_EP} is not in available providers ({self.had_providers}). Use {self.default_provider} inference by default."
+            f"{CUDA_EP} is not in available providers ({self.had_providers})."
         )
         install_instructions = [
             f"If you want to use {CUDA_EP} acceleration, you must do:"
@@ -115,14 +89,25 @@ class ProviderConfig:
         self.print_log(install_instructions)
         return False
 
-    def is_dml_available(self) -> bool:
-        if not self.cfg_use_dml:
-            return False
+    def get_config(self) -> Dict[str, Any]:
+        return self.cfg[OrtBackend.CUDA.value] or {}
 
+    @property
+    def name(self) -> str:
+        return EP.CUDA_EP.value
+
+
+class DMLExecutionProvider(IExecutionProvider):
+    def __init__(self, cfg, had_providers: List[str]):
+        self.cfg = cfg
+        self.had_providers = had_providers
+        self.default_provider = had_providers[0]
+
+    def is_available(self) -> bool:
         cur_os = platform.system()
         if cur_os != "Windows":
             logger.warning(
-                f"DirectML is only supported in Windows OS. The current OS is {cur_os}. Use {self.default_provider} inference by default.",
+                f"DirectML is only supported in Windows OS. The current OS is {cur_os}.",
             )
             return False
 
@@ -132,7 +117,7 @@ class ProviderConfig:
         )
         if window_build_number < 18362:
             logger.warning(
-                f"DirectML is only supported in Windows 10 Build 18362 and above OS. The current Windows Build is {window_build_number}. Use {self.default_provider} inference by default.",
+                f"DirectML is only supported in Windows 10 Build 18362 and above OS. The current Windows Build is {window_build_number}.",
             )
             return False
 
@@ -141,7 +126,7 @@ class ProviderConfig:
             return True
 
         logger.warning(
-            f"{DML_EP} is not in available providers ({self.had_providers}). Use {self.default_provider} inference by default."
+            f"{DML_EP} is not in available providers ({self.had_providers})."
         )
         install_instructions = [
             "If you want to use DirectML acceleration, you must do:",
@@ -152,16 +137,27 @@ class ProviderConfig:
         self.print_log(install_instructions)
         return False
 
-    def is_cann_available(self) -> bool:
-        if not self.cfg_use_cann:
-            return False
+    def get_config(self) -> Dict[str, Any]:
+        return self.cfg[OrtBackend.DML.value] or {}
 
+    @property
+    def name(self) -> str:
+        return EP.DIRECTML_EP.value
+
+
+class CANNExecutionProvider(IExecutionProvider):
+    def __init__(self, cfg, had_providers: List[str]):
+        self.cfg = cfg
+        self.had_providers = had_providers
+        self.default_provider = had_providers[0]
+
+    def is_available(self) -> bool:
         CANN_EP = EP.CANN_EP.value
         if CANN_EP in self.had_providers:
             return True
 
         logger.warning(
-            f"{CANN_EP} is not in available providers ({self.had_providers}). Use {self.default_provider} inference by default."
+            f"{CANN_EP} is not in available providers ({self.had_providers})."
         )
         install_instructions = [
             "If you want to use CANN acceleration, you must do:",
@@ -173,14 +169,25 @@ class ProviderConfig:
         self.print_log(install_instructions)
         return False
 
-    def is_coreml_available(self) -> bool:
-        if not self.cfg_use_coreml:
-            return False
+    def get_config(self) -> Dict[str, Any]:
+        return self.cfg[OrtBackend.CANN.value] or {}
 
+    @property
+    def name(self) -> str:
+        return EP.CANN_EP.value
+
+
+class CoreMLExecutionProvider(IExecutionProvider):
+    def __init__(self, cfg, had_providers: List[str]):
+        self.cfg = cfg
+        self.had_providers = had_providers
+        self.default_provider = had_providers[0]
+
+    def is_available(self) -> bool:
         cur_os = platform.system()
         if cur_os != "Darwin":
             logger.warning(
-                f"CoreML is only supported in macOS/iOS. The current OS is {cur_os}. Use {self.default_provider} inference by default.",
+                f"CoreML is only supported in macOS/iOS. The current OS is {cur_os}.",
             )
             return False
 
@@ -189,7 +196,7 @@ class ProviderConfig:
             return True
 
         logger.warning(
-            f"{COREML_EP} is not in available providers ({self.had_providers}). Use {self.default_provider} inference by default."
+            f"{COREML_EP} is not in available providers ({self.had_providers})."
         )
         install_instructions = [
             "The standard onnxruntime package for macOS includes CoreML support.",
@@ -198,6 +205,35 @@ class ProviderConfig:
         self.print_log(install_instructions)
         return False
 
-    def print_log(self, log_list: List[str]):
-        for log_info in log_list:
-            logger.info(log_info)
+    def get_config(self) -> Dict[str, Any]:
+        return self.cfg[OrtBackend.COREML.value] or {}
+
+    @property
+    def name(self) -> str:
+        return EP.COREML_EP.value
+
+
+class EPFactory:
+    _EP_CLASSES = {
+        OrtBackend.CUDA.value: CUDAExecutionProvider,
+        OrtBackend.DML.value: DMLExecutionProvider,
+        OrtBackend.CANN.value: CANNExecutionProvider,
+        OrtBackend.COREML.value: CoreMLExecutionProvider,
+    }
+
+    @staticmethod
+    def get_ep_list(cfg, had_providers: List[str], device: str) -> Any:
+        default = [(EP.CPU_EP.value, cfg.get(device, {}))]
+
+        ep_class = EPFactory._EP_CLASSES.get(device)
+        if not ep_class:
+            return default
+
+        ep = ep_class(cfg, had_providers)
+        if ep.is_available():
+            return [(ep.name, ep.get_config())]
+        return default
+
+
+def get_ep_list(cfg: Dict[str, Any], device: str) -> List[Tuple[str, Dict[str, Any]]]:
+    return EPFactory.get_ep_list(cfg, get_available_providers(), device)

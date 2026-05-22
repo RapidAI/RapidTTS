@@ -32,7 +32,6 @@ kokoro_onnx:
     extras:
       max_phoneme_length: 510
 
-
 melo_onnx:
   init:
     model_root_dir: models/melotts_zh_mix_en_onnx

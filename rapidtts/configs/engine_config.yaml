@@ -1,0 +1,44 @@
+onnxruntime:
+    session_options:
+      intra_op_num_threads: -1
+      inter_op_num_threads: -1
+      enable_cpu_mem_arena: false
+
+    backends:
+      cpu:
+        arena_extend_strategy: "kSameAsRequested"
+
+      cuda:
+        device_id: 0
+        arena_extend_strategy: "kNextPowerOfTwo"
+        cudnn_conv_algo_search: "EXHAUSTIVE"
+        do_copy_in_default_stream: true
+
+      dml: {}
+
+      cann:
+        device_id: 0
+        arena_extend_strategy: "kNextPowerOfTwo"
+        npu_mem_limit:  21474836480 # 20 * 1024 * 1024 * 1024
+        op_select_impl_mode: "high_performance"
+        optypelist_for_implmode: "Gelu"
+        enable_cann_graph: true
+
+      coreml:
+        ModelFormat: "MLProgram"
+        MLComputeUnits: "ALL"
+        RequireStaticInputShapes: 0
+        EnableOnSubgraphs: 0
+        SpecializationStrategy: "FastPrediction"
+        ProfileComputePlan: 0
+        AllowLowPrecisionAccumulationOnGPU: 0
+        ModelCacheDirectory: "/tmp/RapidOCR"
+
+openvino:
+    inference_num_threads: -1
+    performance_hint: null
+    performance_num_requests: -1
+    enable_cpu_pinning: null
+    num_streams: -1
+    enable_hyper_threading: null
+    scheduling_core_type: null

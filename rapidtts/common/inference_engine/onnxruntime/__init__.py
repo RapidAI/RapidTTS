@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 # @Author: SWHL
 # @Contact: liekkaskono@163.com
-from .main import ONNXRuntimeError, OrtInferSession
+from .main import ONNXRuntimeError, OrtInferSession, build_session_options
 
-__all__ = ["ONNXRuntimeError", "OrtInferSession"]
+__all__ = ["ONNXRuntimeError", "OrtInferSession", "build_session_options"]
