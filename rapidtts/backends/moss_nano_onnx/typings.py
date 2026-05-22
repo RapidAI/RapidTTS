@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 # @Author: SWHL
 # @Contact: liekkaskono@163.com
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -19,3 +19,4 @@ class MOSSNanoConfig:
     model_root_dir: Path
     device: str = "cpu"
     thread_count: int = 4
+    engine_cfg_defaults: dict = field(default_factory=dict)

@@ -14,10 +14,7 @@ from .session_option import build_session_options
 
 class OrtInferSession:
     def __init__(
-        self,
-        model_path: Path,
-        engine_cfg: Dict[str, Any],
-        device: str = "cpu",
+        self, model_path: Path, engine_cfg: Dict[str, Any], device: str = "cpu"
     ):
         sess_opts = build_session_options(engine_cfg["onnxruntime"]["session_options"])
         ep_list = get_ep_list(engine_cfg["onnxruntime"]["backends"], device)
@@ -25,8 +22,6 @@ class OrtInferSession:
         self.session = InferenceSession(
             str(model_path), sess_options=sess_opts, providers=ep_list
         )
-
-        # provider_cfg.verify_providers(self.session.get_providers())
 
     def __call__(self, input_content: np.ndarray) -> np.ndarray:
         input_dict = dict(zip(self.get_input_names(), [input_content]))

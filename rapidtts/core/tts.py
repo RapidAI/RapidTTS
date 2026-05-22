@@ -9,6 +9,7 @@ from .config import (
     get_backend_init_defaults,
     get_backend_request_defaults,
     get_default_backend,
+    get_engine_config,
     load_config,
 )
 from .model_assets import ensure_model_assets
@@ -30,14 +31,17 @@ class RapidTTS:
 
         if model is None:
             model = TTSModel(get_default_backend(self.cfg))
+
         backend_name = model.value
         init_defaults = get_backend_init_defaults(self.cfg, backend_name)
         request_defaults = get_backend_request_defaults(self.cfg, backend_name)
+        engine_cfg = get_engine_config(config_path)
 
         init_kwargs = {
             **init_defaults,
             **kwargs,
             "request_defaults": request_defaults,
+            "engine_cfg_defaults": engine_cfg,
         }
         if "model_root_dir" not in kwargs:
             init_kwargs["model_root_dir"] = ensure_model_assets(backend_name)

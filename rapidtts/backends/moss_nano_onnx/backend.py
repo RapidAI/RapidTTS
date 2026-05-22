@@ -23,13 +23,19 @@ class MOSSNanoBackend(BaseTTSBackend):
         model_root_dir: Union[str, Path],
         device: str = "cpu",
         request_defaults: Optional[Dict[str, Any]] = None,
+        engine_cfg_defaults: Optional[Dict[str, Any]] = None,
         text_normalizer_type: str = "wetext",
     ) -> None:
         self.request_defaults = request_defaults or {}
+        self.engine_cfg_defaults = engine_cfg_defaults or {}
 
         self.model_root_dir = Path(model_root_dir)
         self.model = MOSSNanoModel(
-            MOSSNanoConfig(model_root_dir=self.model_root_dir, device=device)
+            MOSSNanoConfig(
+                model_root_dir=self.model_root_dir,
+                device=device,
+                engine_cfg_defaults=self.engine_cfg_defaults,
+            )
         )
 
         self.preprocessor = MOSSNanoPreprocessor(

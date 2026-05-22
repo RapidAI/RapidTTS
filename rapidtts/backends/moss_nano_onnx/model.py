@@ -8,6 +8,11 @@ from typing import Any, Callable
 import numpy as np
 import onnxruntime as ort
 
+from ...common.inference_engine.onnxruntime.main import (
+    OrtInferSession,
+    build_session_options,
+    get_ep_list,
+)
 from ...common.io import load_json
 from ...common.logger import logging
 from .typings import MOSSNanoConfig, MOSSNanoInput
@@ -23,9 +28,7 @@ class MOSSNanoModel:
         self.config = config
         self.model_root_dir = config.model_root_dir
 
-        self.thread_count = self.config.thread_count
-        self.ort_providers = ["CPUExecutionProvider"]
-        self.execution_provider = "cpu"
+        self.engine_cfg_defaults = config.engine_cfg_defaults or {}
 
         codec_meta_path = (
             self.model_root_dir
@@ -107,22 +110,11 @@ class MOSSNanoModel:
         }
 
     def _session(self, path_value: Path) -> ort.InferenceSession:
-        options = ort.SessionOptions()
-        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        options.intra_op_num_threads = self.thread_count
-        options.inter_op_num_threads = 1
-        session = ort.InferenceSession(
-            str(path_value), sess_options=options, providers=self.ort_providers
+        return OrtInferSession(
+            model_path=path_value,
+            engine_cfg=self.engine_cfg_defaults,
+            device=self.config.device,
         )
-        if (
-            self.execution_provider == EXECUTION_PROVIDER_CUDA
-            and "CUDAExecutionProvider" not in session.get_providers()
-        ):
-            raise RuntimeError(
-                "CUDAExecutionProvider was requested, but ONNX Runtime created a session without CUDA support "
-                f"for {path_value}. Actual providers: {session.get_providers()}"
-            )
-        return session
 
     def generate_audio_frames(
         self,
