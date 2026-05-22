@@ -8,11 +8,7 @@ from typing import Any, Callable
 import numpy as np
 import onnxruntime as ort
 
-from ...common.inference_engine.onnxruntime.main import (
-    OrtInferSession,
-    build_session_options,
-    get_ep_list,
-)
+from ...common.inference_engine.onnxruntime.main import OrtInferSession
 from ...common.io import load_json
 from ...common.logger import logging
 from .typings import MOSSNanoConfig, MOSSNanoInput
@@ -85,7 +81,7 @@ class MOSSNanoModel:
         waveform = self.decode_full_audio_safe(generated_frames)
         return generated_frames, waveform
 
-    def _create_sessions(self) -> dict[str, ort.InferenceSession]:
+    def _create_sessions(self) -> dict[str, OrtInferSession]:
         tts_dir = self.model_root_dir / "MOSS-TTS-Nano-100M-ONNX"
         codec_dir = self.model_root_dir / "MOSS-Audio-Tokenizer-Nano-ONNX"
         return {
@@ -109,7 +105,7 @@ class MOSSNanoModel:
             ),
         }
 
-    def _session(self, path_value: Path) -> ort.InferenceSession:
+    def _session(self, path_value: Path) -> OrtInferSession:
         return OrtInferSession(
             model_path=path_value,
             engine_cfg=self.engine_cfg_defaults,
@@ -127,16 +123,13 @@ class MOSSNanoModel:
         prefill_mask, prefill_mask_dims = _flatten2d_int32(
             request_rows["attentionMask"]
         )
-        outputs = self.sessions["prefill"].run(
-            None,
+        outputs = self.sessions["prefill"](
             {
                 "input_ids": prefill_ids.reshape(prefill_dims),
                 "attention_mask": prefill_mask.reshape(prefill_mask_dims),
-            },
+            }
         )
-        output_names = [
-            output.name for output in self.sessions["prefill"].get_outputs()
-        ]
+        output_names = self.sessions["prefill"].get_output_names()
         named_outputs = dict(zip(output_names, outputs, strict=True))
         global_hidden = _extract_last_hidden(named_outputs["global_hidden"])
         past_valid_length = sum(int(item) for item in request_rows["attentionMask"][0])
@@ -309,10 +302,8 @@ class MOSSNanoModel:
             }
             for input_name in self.tts_meta["onnx"]["decode_input_names"][2:]:
                 decode_feeds[input_name] = past_by_name[input_name]
-            decode_outputs = self.sessions["decode"].run(None, decode_feeds)
-            decode_output_names = [
-                output.name for output in self.sessions["decode"].get_outputs()
-            ]
+            decode_outputs = self.sessions["decode"](decode_feeds)
+            decode_output_names = self.sessions["decode"].get_output_names()
             named_decode_outputs = dict(
                 zip(decode_output_names, decode_outputs, strict=True)
             )
@@ -365,8 +356,7 @@ class MOSSNanoModel:
             ],
             dtype=np.float32,
         )
-        outputs = self.sessions["local_fixed_sampled_frame"].run(
-            None,
+        outputs = self.sessions["local_fixed_sampled_frame"](
             {
                 "global_hidden": global_hidden.astype(np.float32, copy=False),
                 "repetition_seen_mask": repetition_seen_mask,
@@ -374,10 +364,7 @@ class MOSSNanoModel:
                 "audio_random_u": audio_random_u,
             },
         )
-        output_names = [
-            output.name
-            for output in self.sessions["local_fixed_sampled_frame"].get_outputs()
-        ]
+        output_names = self.sessions["local_fixed_sampled_frame"].get_output_names()
         named_outputs = dict(zip(output_names, outputs, strict=True))
         frame_token_ids = (
             np.asarray(named_outputs["frame_token_ids"])
@@ -432,18 +419,15 @@ class MOSSNanoModel:
         if not generated_frames:
             return [], 0
         audio_codes, dims = _flatten3d_int32([generated_frames])
-        outputs = self.sessions["codec_decode"].run(
-            None,
+        outputs = self.sessions["codec_decode"](
             {
                 "audio_codes": audio_codes.reshape(dims),
                 "audio_code_lengths": np.asarray(
                     [len(generated_frames)], dtype=np.int32
                 ),
-            },
+            }
         )
-        output_names = [
-            output.name for output in self.sessions["codec_decode"].get_outputs()
-        ]
+        output_names = self.sessions["codec_decode"].get_output_names()
         named_outputs = dict(zip(output_names, outputs, strict=True))
         audio_length = int(named_outputs["audio_lengths"].reshape(-1)[0])
         return _slice_channel_major_audio(

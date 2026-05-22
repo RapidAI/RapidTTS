@@ -56,7 +56,7 @@ class CPUExecutionProvider(IExecutionProvider):
         return True
 
     def get_config(self) -> Dict[str, Any]:
-        return self.cfg[OrtBackend.CPU.value] or {}
+        return {}
 
     @property
     def name(self) -> str:
@@ -223,7 +223,7 @@ class EPFactory:
 
     @staticmethod
     def get_ep_list(cfg, had_providers: List[str], device: str) -> Any:
-        default = [(EP.CPU_EP.value, cfg.get(device, {}))]
+        default = [(EP.CPU_EP.value)]
 
         ep_class = EPFactory._EP_CLASSES.get(device)
         if not ep_class:

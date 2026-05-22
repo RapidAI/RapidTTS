@@ -5,8 +5,7 @@ onnxruntime:
       enable_cpu_mem_arena: false
 
     backends:
-      cpu:
-        arena_extend_strategy: "kSameAsRequested"
+      cpu: null
 
       cuda:
         device_id: 0
