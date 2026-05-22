@@ -10,7 +10,6 @@ tmp
 models/
 
 temp/
-.DS_Store
 
 *.bin
 
