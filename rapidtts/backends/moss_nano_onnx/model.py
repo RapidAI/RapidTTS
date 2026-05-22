@@ -1,19 +1,15 @@
 # -*- encoding: utf-8 -*-
 # @Author: SWHL
 # @Contact: liekkaskono@163.com
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
-import onnxruntime as ort
 
 from ...common.inference_engine.onnxruntime.main import OrtInferSession
 from ...common.io import load_json
-from ...common.logger import logging
 from .typings import MOSSNanoConfig, MOSSNanoInput
 
-EXECUTION_PROVIDER_CUDA = "cuda"
 SAMPLE_MODE_FIXED = "fixed"
 DEFAULT_VOICE_CLONE_INTER_CHUNK_PAUSE_SHORT_SECONDS = 0.40
 DEFAULT_VOICE_CLONE_INTER_CHUNK_PAUSE_LONG_SECONDS = 0.24
@@ -26,36 +22,26 @@ class MOSSNanoModel:
 
         self.engine_cfg_defaults = config.engine_cfg_defaults or {}
 
-        codec_meta_path = (
-            self.model_root_dir
-            / "MOSS-Audio-Tokenizer-Nano-ONNX"
-            / "codec_browser_onnx_meta.json"
-        )
+        self.tts_dir = self.model_root_dir / "MOSS-TTS-Nano-100M-ONNX"
+        self.codec_dir = self.model_root_dir / "MOSS-Audio-Tokenizer-Nano-ONNX"
+
+        codec_meta_path = self.codec_dir / "codec_browser_onnx_meta.json"
         self.codec_meta = load_json(codec_meta_path)
 
-        self.manifest_path = (
-            self.model_root_dir
-            / "MOSS-TTS-Nano-100M-ONNX"
-            / "browser_poc_manifest.json"
-        )
-        self.manifest = load_json(self.manifest_path)
+        manifest_path = self.tts_dir / "browser_poc_manifest.json"
+        self.manifest = load_json(manifest_path)
 
-        self.tts_meta_path = Path(
-            (
-                self.model_root_dir
-                / "MOSS-TTS-Nano-100M-ONNX"
-                / "tts_browser_onnx_meta.json"
-            )
-        )
-        self.tts_meta = load_json(self.tts_meta_path)
+        tts_meta_path = self.tts_dir / "tts_browser_onnx_meta.json"
+        self.tts_meta = load_json(tts_meta_path)
 
-        self.sessions = self._create_sessions()
+        self.sessions = self.create_sessions()
 
         self.rng = np.random.default_rng(1234)
 
     def speak(self, inputs: list[MOSSNanoInput]):
         all_waveforms: list[np.ndarray] = []
         all_generated_frames: list[list[int]] = []
+
         sample_rate = int(self.codec_meta["codec_config"]["sample_rate"])
         channels = int(self.codec_meta["codec_config"]["channels"])
 
@@ -81,31 +67,32 @@ class MOSSNanoModel:
         waveform = self.decode_full_audio_safe(generated_frames)
         return generated_frames, waveform
 
-    def _create_sessions(self) -> dict[str, OrtInferSession]:
-        tts_dir = self.model_root_dir / "MOSS-TTS-Nano-100M-ONNX"
-        codec_dir = self.model_root_dir / "MOSS-Audio-Tokenizer-Nano-ONNX"
-        return {
-            "prefill": self._session(tts_dir / "moss_tts_prefill.onnx"),
-            "decode": self._session(tts_dir / "moss_tts_decode_step.onnx"),
-            "local_decoder": self._session(tts_dir / "moss_tts_local_decoder.onnx"),
-            "local_fixed_sampled_frame": self._session(
-                tts_dir / "moss_tts_local_fixed_sampled_frame.onnx"
+    def create_sessions(self) -> dict[str, OrtInferSession]:
+        models = {
+            "prefill": (self.tts_dir, "moss_tts_prefill.onnx"),
+            "decode": (self.tts_dir, "moss_tts_decode_step.onnx"),
+            "local_decoder": (self.tts_dir, "moss_tts_local_decoder.onnx"),
+            "local_fixed_sampled_frame": (
+                self.tts_dir,
+                "moss_tts_local_fixed_sampled_frame.onnx",
             ),
-            "local_cached_step": self._session(
-                tts_dir / "moss_tts_local_cached_step.onnx"
+            "local_cached_step": (self.tts_dir, "moss_tts_local_cached_step.onnx"),
+            "codec_encode": (self.codec_dir, "moss_audio_tokenizer_encode.onnx"),
+            "codec_decode": (
+                self.codec_dir,
+                "moss_audio_tokenizer_decode_full.onnx",
             ),
-            "codec_encode": self._session(
-                codec_dir / "moss_audio_tokenizer_encode.onnx"
-            ),
-            "codec_decode": self._session(
-                codec_dir / "moss_audio_tokenizer_decode_full.onnx"
-            ),
-            "codec_decode_step": self._session(
-                codec_dir / "moss_audio_tokenizer_decode_step.onnx"
+            "codec_decode_step": (
+                self.codec_dir,
+                "moss_audio_tokenizer_decode_step.onnx",
             ),
         }
+        return {
+            name: self.init_session(dir / fname)
+            for name, (dir, fname) in models.items()
+        }
 
-    def _session(self, path_value: Path) -> OrtInferSession:
+    def init_session(self, path_value: Path) -> OrtInferSession:
         return OrtInferSession(
             model_path=path_value,
             engine_cfg=self.engine_cfg_defaults,
@@ -117,8 +104,6 @@ class MOSSNanoModel:
         request_rows: dict[str, list[list[int]]],
         on_frame: Callable[[list[list[int]], int, list[int]], None] | None = None,
     ) -> list[list[int]]:
-        generation_defaults = self.manifest["generation_defaults"]
-        row_width = int(self.manifest["tts_config"]["n_vq"]) + 1
         prefill_ids, prefill_dims = _flatten3d_int32([request_rows["inputIds"]])
         prefill_mask, prefill_mask_dims = _flatten2d_int32(
             request_rows["attentionMask"]
@@ -132,11 +117,13 @@ class MOSSNanoModel:
         output_names = self.sessions["prefill"].get_output_names()
         named_outputs = dict(zip(output_names, outputs, strict=True))
         global_hidden = _extract_last_hidden(named_outputs["global_hidden"])
+
         past_valid_length = sum(int(item) for item in request_rows["attentionMask"][0])
         past_by_name = {
             output_name.replace("present_", "past_"): named_outputs[output_name]
             for output_name in self.tts_meta["onnx"]["prefill_output_names"][1:]
         }
+
         generated_frames: list[list[int]] = []
         previous_tokens_by_channel = [
             [] for _ in range(int(self.manifest["tts_config"]["n_vq"]))
@@ -145,145 +132,20 @@ class MOSSNanoModel:
             set() for _ in range(int(self.manifest["tts_config"]["n_vq"]))
         ]
 
+        row_width = int(self.manifest["tts_config"]["n_vq"]) + 1
+        generation_defaults = self.manifest["generation_defaults"]
         for step_index in range(int(generation_defaults["max_new_frames"])):
-            frame: list[int] = []
-            if "local_greedy_frame" in self.sessions and not bool(
-                generation_defaults["do_sample"]
-            ):
-                should_continue, frame = self.run_local_greedy_frame(
-                    global_hidden,
-                    previous_token_sets_by_channel=previous_token_sets_by_channel,
-                    repetition_penalty=float(
-                        generation_defaults["audio_repetition_penalty"]
-                    ),
-                )
-                if not should_continue:
-                    break
-                for channel_index, sampled_token in enumerate(frame):
-                    previous_tokens_by_channel[channel_index].append(sampled_token)
-                    previous_token_sets_by_channel[channel_index].add(sampled_token)
-            elif (
-                "local_fixed_sampled_frame" in self.sessions
-                and generation_defaults["sample_mode"] == SAMPLE_MODE_FIXED
-            ):
-                should_continue, frame = self.run_local_fixed_sampled_frame(
-                    global_hidden,
-                    previous_token_sets_by_channel=previous_token_sets_by_channel,
-                )
-                if not should_continue:
-                    break
-                for channel_index, sampled_token in enumerate(frame):
-                    previous_tokens_by_channel[channel_index].append(sampled_token)
-                    previous_token_sets_by_channel[channel_index].add(sampled_token)
-            elif "local_cached_step" in self.sessions:
-                local_past_by_name = self.create_empty_local_cached_past()
-                local_past_valid_length = 0
-                local_text_logits, _ignored_audio_logits, local_past_by_name = (
-                    self.run_local_cached_step(
-                        global_hidden,
-                        text_token_id=0,
-                        audio_token_id=0,
-                        channel_index=0,
-                        step_type=0,
-                        past_valid_lengths=local_past_valid_length,
-                        local_past_by_name=local_past_by_name,
-                    )
-                )
-                local_past_valid_length += 1
-                next_text_token = _sample_assistant_text_token(
-                    local_text_logits,
-                    self.manifest,
-                    generation_defaults,
-                    self.rng,
-                )
-                if next_text_token != int(
-                    self.manifest["tts_config"]["audio_assistant_slot_token_id"]
-                ):
-                    break
-                _unused_text_logits, audio_logits, local_past_by_name = (
-                    self.run_local_cached_step(
-                        global_hidden,
-                        text_token_id=next_text_token,
-                        audio_token_id=0,
-                        channel_index=0,
-                        step_type=1,
-                        past_valid_lengths=local_past_valid_length,
-                        local_past_by_name=local_past_by_name,
-                    )
-                )
-                local_past_valid_length += 1
-                first_channel_logits = self.slice_audio_channel_logits(
-                    audio_logits, 0
-                ).astype(np.float32, copy=False)
-                sampled_token = _sample_audio_token(
-                    first_channel_logits,
-                    previous_tokens_by_channel[0],
-                    previous_token_sets_by_channel[0],
-                    generation_defaults,
-                    self.rng,
-                )
-                frame.append(sampled_token)
-                previous_tokens_by_channel[0].append(sampled_token)
-                previous_token_sets_by_channel[0].add(sampled_token)
+            should_continue, frame = self.run_local_fixed_sampled_frame(
+                global_hidden,
+                previous_token_sets_by_channel=previous_token_sets_by_channel,
+            )
+            if not should_continue:
+                break
 
-                previous_token = sampled_token
-                host_sampled_channel_limit = int(self.manifest["tts_config"]["n_vq"])
-                for channel_index in range(1, host_sampled_channel_limit):
-                    _unused_text_logits, audio_logits, local_past_by_name = (
-                        self.run_local_cached_step(
-                            global_hidden,
-                            text_token_id=0,
-                            audio_token_id=previous_token,
-                            channel_index=channel_index - 1,
-                            step_type=2,
-                            past_valid_lengths=local_past_valid_length,
-                            local_past_by_name=local_past_by_name,
-                        )
-                    )
-                    local_past_valid_length += 1
-                    channel_logits = self.slice_audio_channel_logits(
-                        audio_logits, channel_index
-                    ).astype(np.float32, copy=False)
-                    sampled_token = _sample_audio_token(
-                        channel_logits,
-                        previous_tokens_by_channel[channel_index],
-                        previous_token_sets_by_channel[channel_index],
-                        generation_defaults,
-                        self.rng,
-                    )
-                    frame.append(sampled_token)
-                    previous_tokens_by_channel[channel_index].append(sampled_token)
-                    previous_token_sets_by_channel[channel_index].add(sampled_token)
-                    previous_token = sampled_token
-            else:
-                local_text_logits, _ = self.run_local_decoder(global_hidden, 0, [])
-                next_text_token = _sample_assistant_text_token(
-                    local_text_logits,
-                    self.manifest,
-                    generation_defaults,
-                    self.rng,
-                )
-                if next_text_token != int(
-                    self.manifest["tts_config"]["audio_assistant_slot_token_id"]
-                ):
-                    break
-                for channel_index in range(int(self.manifest["tts_config"]["n_vq"])):
-                    _, audio_logits = self.run_local_decoder(
-                        global_hidden, next_text_token, frame
-                    )
-                    channel_logits = self.slice_audio_channel_logits(
-                        audio_logits, channel_index
-                    ).astype(np.float32, copy=False)
-                    sampled_token = _sample_audio_token(
-                        channel_logits,
-                        previous_tokens_by_channel[channel_index],
-                        previous_token_sets_by_channel[channel_index],
-                        generation_defaults,
-                        self.rng,
-                    )
-                    frame.append(sampled_token)
-                    previous_tokens_by_channel[channel_index].append(sampled_token)
-                    previous_token_sets_by_channel[channel_index].add(sampled_token)
+            for channel_index, sampled_token in enumerate(frame):
+                previous_tokens_by_channel[channel_index].append(sampled_token)
+                previous_token_sets_by_channel[channel_index].add(sampled_token)
+
             generated_frames.append(frame)
 
             next_row = np.full(
@@ -294,14 +156,18 @@ class MOSSNanoModel:
             next_row[0, 0, 0] = int(
                 self.manifest["tts_config"]["audio_assistant_slot_token_id"]
             )
+
             for index, token in enumerate(frame):
                 next_row[0, 0, index + 1] = int(token)
+
             decode_feeds: dict[str, np.ndarray] = {
                 "input_ids": next_row,
                 "past_valid_lengths": np.asarray([past_valid_length], dtype=np.int32),
             }
+
             for input_name in self.tts_meta["onnx"]["decode_input_names"][2:]:
                 decode_feeds[input_name] = past_by_name[input_name]
+
             decode_outputs = self.sessions["decode"](decode_feeds)
             decode_output_names = self.sessions["decode"].get_output_names()
             named_decode_outputs = dict(
@@ -382,36 +248,9 @@ class MOSSNanoModel:
             channel_arrays, _audio_length = self.decode_full_audio(generated_frames)
             return _merge_audio_channels(channel_arrays)
         except Exception as exc:
-            logging.warning(
-                "full codec decode failed, falling back to incremental decode: %s", exc
-            )
-            self.codec_streaming_session.reset()
-            merged_by_channel: list[list[np.ndarray]] = [
-                [] for _ in range(int(self.codec_meta["codec_config"]["channels"]))
-            ]
-            try:
-                for start_index in range(0, len(generated_frames), 8):
-                    frame_chunk = generated_frames[start_index : start_index + 8]
-                    decoded = self.codec_streaming_session.run_frames(frame_chunk)
-                    if decoded is None:
-                        continue
-                    audio, audio_length = decoded
-                    if audio_length <= 0:
-                        continue
-                    for channel_index, channel in enumerate(audio[0, :, :audio_length]):
-                        merged_by_channel[channel_index].append(
-                            np.asarray(channel, dtype=np.float32)
-                        )
-            finally:
-                self.codec_streaming_session.reset()
-            return _merge_audio_channels(
-                [
-                    np.concatenate(chunks)
-                    if chunks
-                    else np.zeros((0,), dtype=np.float32)
-                    for chunks in merged_by_channel
-                ]
-            )
+            raise RuntimeError(
+                f"full codec decode failed, falling back to incremental decode: {exc}"
+            ) from exc
 
     def decode_full_audio(
         self, generated_frames: list[list[int]]
@@ -452,82 +291,6 @@ def _slice_channel_major_audio(
         audio[0, channel_index, start:end].astype(np.float32, copy=False)
         for channel_index in range(channels)
     ]
-
-
-@dataclass
-class CodecStreamingDecodeSession:
-    codec_meta: dict[str, Any]
-    session: ort.InferenceSession
-
-    def __post_init__(self) -> None:
-        self.transformer_specs = list(
-            self.codec_meta.get("streaming_decode", {}).get("transformer_offsets", [])
-        )
-        self.attention_specs = list(
-            self.codec_meta.get("streaming_decode", {}).get("attention_caches", [])
-        )
-        self.state_feeds: dict[str, np.ndarray] = {}
-        self.reset()
-
-    def reset(self) -> None:
-        self.state_feeds = {}
-        for spec in self.transformer_specs:
-            self.state_feeds[str(spec["input_name"])] = np.zeros(
-                tuple(spec["shape"]), dtype=np.int32
-            )
-        for spec in self.attention_specs:
-            self.state_feeds[str(spec["offset_input_name"])] = np.zeros(
-                tuple(spec["offset_shape"]), dtype=np.int32
-            )
-            self.state_feeds[str(spec["cached_keys_input_name"])] = np.zeros(
-                tuple(spec["cache_shape"]), dtype=np.float32
-            )
-            self.state_feeds[str(spec["cached_values_input_name"])] = np.zeros(
-                tuple(spec["cache_shape"]), dtype=np.float32
-            )
-            positions = np.full(tuple(spec["positions_shape"]), -1, dtype=np.int32)
-            self.state_feeds[str(spec["cached_positions_input_name"])] = positions
-
-    def run_frames(self, frame_rows: list[list[int]]) -> tuple[np.ndarray, int] | None:
-        if not frame_rows:
-            return None
-        num_quantizers = int(self.codec_meta["codec_config"]["num_quantizers"])
-        frame_count = len(frame_rows)
-        audio_codes = np.zeros((1, frame_count, num_quantizers), dtype=np.int32)
-        for frame_index, frame_row in enumerate(frame_rows):
-            for channel_index in range(num_quantizers):
-                audio_codes[0, frame_index, channel_index] = int(
-                    frame_row[channel_index] if channel_index < len(frame_row) else 0
-                )
-        feeds: dict[str, np.ndarray] = {
-            "audio_codes": audio_codes,
-            "audio_code_lengths": np.asarray([frame_count], dtype=np.int32),
-        }
-        feeds.update(self.state_feeds)
-        outputs = self.session.run(None, feeds)
-        output_names = [output.name for output in self.session.get_outputs()]
-        named_outputs = dict(zip(output_names, outputs, strict=True))
-        for spec in self.transformer_specs:
-            self.state_feeds[str(spec["input_name"])] = named_outputs[
-                str(spec["output_name"])
-            ]
-        for spec in self.attention_specs:
-            self.state_feeds[str(spec["offset_input_name"])] = named_outputs[
-                str(spec["offset_output_name"])
-            ]
-            self.state_feeds[str(spec["cached_keys_input_name"])] = named_outputs[
-                str(spec["cached_keys_output_name"])
-            ]
-            self.state_feeds[str(spec["cached_values_input_name"])] = named_outputs[
-                str(spec["cached_values_output_name"])
-            ]
-            self.state_feeds[str(spec["cached_positions_input_name"])] = named_outputs[
-                str(spec["cached_positions_output_name"])
-            ]
-        return (
-            named_outputs["audio"],
-            int(named_outputs["audio_lengths"].reshape(-1)[0]),
-        )
 
 
 def _merge_audio_channels(channel_arrays: list[np.ndarray]) -> np.ndarray:
@@ -574,146 +337,3 @@ def _extract_last_hidden(hidden_states: np.ndarray) -> np.ndarray:
     if hidden_states.ndim != 3 or hidden_states.shape[0] != 1:
         raise ValueError(f"Unexpected global_hidden shape: {hidden_states.shape}")
     return hidden_states[:, -1, :].astype(np.float32, copy=False)
-
-
-def _sample_audio_token(
-    audio_logits: np.ndarray,
-    previous_token_ids: list[int],
-    previous_token_set: set[int],
-    generation_defaults: dict[str, Any],
-    rng: np.random.Generator,
-) -> int:
-    repetition_penalty = float(generation_defaults["audio_repetition_penalty"])
-    if not bool(generation_defaults["do_sample"]):
-        return _argmax_with_repetition_penalty(
-            audio_logits, previous_token_set, repetition_penalty
-        )
-    penalized_scores = _apply_repetition_penalty(
-        audio_logits, previous_token_ids, repetition_penalty
-    )
-    return _sample_from_scores(
-        penalized_scores,
-        do_sample=True,
-        temperature=float(generation_defaults["audio_temperature"]),
-        top_k=int(generation_defaults["audio_top_k"]),
-        top_p=float(generation_defaults["audio_top_p"]),
-        rng=rng,
-    )
-
-
-def _argmax_with_repetition_penalty(
-    values: np.ndarray, previous_token_set: set[int], repetition_penalty: float
-) -> int:
-    best_index = 0
-    best_value = float("-inf")
-    apply_penalty = bool(previous_token_set) and repetition_penalty != 1.0
-    for index, value in enumerate(values):
-        score = float(value)
-        if apply_penalty and index in previous_token_set:
-            score = (
-                score * repetition_penalty if score < 0 else score / repetition_penalty
-            )
-        if score > best_value:
-            best_value = score
-            best_index = index
-    return int(best_index)
-
-
-def _apply_repetition_penalty(
-    values: np.ndarray, previous_token_ids: list[int], repetition_penalty: float
-) -> np.ndarray:
-    if not previous_token_ids or repetition_penalty == 1.0:
-        return values
-    result = values.copy()
-    for token_id in set(int(item) for item in previous_token_ids):
-        if token_id < 0 or token_id >= result.shape[0]:
-            continue
-        result[token_id] = (
-            result[token_id] * repetition_penalty
-            if result[token_id] < 0
-            else result[token_id] / repetition_penalty
-        )
-    return result
-
-
-def _sample_from_scores(
-    values: np.ndarray,
-    *,
-    do_sample: bool,
-    temperature: float,
-    top_k: int,
-    top_p: float,
-    rng: np.random.Generator,
-) -> int:
-    if not do_sample:
-        return _argmax(values)
-    if not (temperature > 0):
-        raise ValueError("temperature must be positive when do_sample=True")
-    scores = np.asarray(values, dtype=np.float32).copy() / float(temperature)
-    if top_k > 0 and top_k < scores.shape[0]:
-        sorted_desc = np.sort(scores)[::-1]
-        threshold = float(sorted_desc[top_k - 1])
-        scores[scores < threshold] = float("-inf")
-    if top_p > 0 and top_p < 1:
-        indexed = list(enumerate(scores.tolist()))
-        indexed.sort(key=lambda item: item[1], reverse=True)
-        sorted_scores = np.asarray([item[1] for item in indexed], dtype=np.float32)
-        sorted_probs = _softmax(sorted_scores)
-        remove_mask = [False] * len(indexed)
-        cumulative = 0.0
-        for index, probability in enumerate(sorted_probs):
-            cumulative += float(probability)
-            if cumulative > float(top_p):
-                remove_mask[index] = True
-        for index in range(len(remove_mask) - 1, 0, -1):
-            remove_mask[index] = remove_mask[index - 1]
-        if remove_mask:
-            remove_mask[0] = False
-        for index, should_remove in enumerate(remove_mask):
-            if should_remove:
-                scores[indexed[index][0]] = float("-inf")
-    probabilities = _softmax(scores)
-    random_value = float(rng.random())
-    for index, probability in enumerate(probabilities):
-        random_value -= float(probability)
-        if random_value <= 0:
-            return int(index)
-    return _argmax(scores)
-
-
-def _softmax(values: np.ndarray) -> np.ndarray:
-    max_value = float(np.max(values))
-    shifted = np.asarray(values - max_value, dtype=np.float64)
-    exps = np.exp(shifted)
-    return exps / np.sum(exps, dtype=np.float64)
-
-
-def _argmax(values: np.ndarray) -> int:
-    return int(np.argmax(values))
-
-
-def _sample_assistant_text_token(
-    text_logits: np.ndarray,
-    manifest: dict[str, Any],
-    generation_defaults: dict[str, Any],
-    rng: np.random.Generator,
-) -> int:
-    candidate_ids = np.asarray(
-        [
-            int(manifest["tts_config"]["audio_assistant_slot_token_id"]),
-            int(manifest["tts_config"]["audio_end_token_id"]),
-        ],
-        dtype=np.int32,
-    )
-    candidate_scores = text_logits[candidate_ids]
-    sampled_index = _sample_from_scores(
-        candidate_scores,
-        do_sample=bool(generation_defaults["do_sample"]),
-        temperature=float(generation_defaults["text_temperature"]),
-        top_k=min(
-            int(generation_defaults["text_top_k"]), int(candidate_scores.shape[0])
-        ),
-        top_p=float(generation_defaults["text_top_p"]),
-        rng=rng,
-    )
-    return int(candidate_ids[sampled_index])
