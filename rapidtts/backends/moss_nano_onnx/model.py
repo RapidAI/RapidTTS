@@ -8,8 +8,8 @@ import numpy as np
 
 from ...common.inference_engine.onnxruntime.main import OrtInferSession
 from ...common.io import load_json
-from .typings import MOSSNanoConfig, MOSSNanoInput
 from .preprocess.utils import flatten2d_int32, flatten3d_int32
+from .typings import MOSSNanoConfig, MOSSNanoInput
 
 DEFAULT_VOICE_CLONE_INTER_CHUNK_PAUSE_SHORT_SECONDS = 0.40
 DEFAULT_VOICE_CLONE_INTER_CHUNK_PAUSE_LONG_SECONDS = 0.24
@@ -72,7 +72,6 @@ class MOSSNanoModel:
                 "moss_tts_local_fixed_sampled_frame.onnx",
             ),
             "local_cached_step": (self.tts_dir, "moss_tts_local_cached_step.onnx"),
-            "codec_encode": (self.codec_dir, "moss_audio_tokenizer_encode.onnx"),
             "codec_decode": (
                 self.codec_dir,
                 "moss_audio_tokenizer_decode_full.onnx",

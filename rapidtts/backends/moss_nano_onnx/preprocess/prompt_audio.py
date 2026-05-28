@@ -28,10 +28,23 @@ class PromptAudioProcessor:
         codec_meta_path = tokenizer_dir / "codec_browser_onnx_meta.json"
         self.codec_meta = load_json(codec_meta_path)
 
-        tokenizer_encode_path = tokenizer_dir / "moss_audio_tokenizer_encode.onnx"
-        self.session = OrtInferSession(
-            tokenizer_encode_path, engine_cfg=engine_cfg_defaults, device=device
-        )
+        self._session = None
+        self.tokenizer_dir = tokenizer_dir
+        self.engine_cfg_defaults = engine_cfg_defaults
+        self.device = device
+
+    @property
+    def session(self):
+        if self._session is None:
+            tokenizer_encode_path = (
+                self.tokenizer_dir / "moss_audio_tokenizer_encode.onnx"
+            )
+            self._session = OrtInferSession(
+                tokenizer_encode_path,
+                engine_cfg=self.engine_cfg_defaults,
+                device=self.device,
+            )
+        return self._session
 
     def resolve_prompt_audio_codes(
         self,
