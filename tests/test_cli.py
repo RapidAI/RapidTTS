@@ -203,6 +203,22 @@ def test_check_dependencies_reports_melo_extra_install_hint(monkeypatch, capsys)
     assert 'pip install "rapidtts[melo]"' in captured.out
 
 
+def test_check_dependencies_reports_moss_nano_extra_install_hint(monkeypatch, capsys):
+    def fake_find_spec(name):
+        if name == "sentencepiece":
+            return None
+        return object()
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", fake_find_spec)
+
+    assert cli._check_dependencies("moss_nano_onnx") is False
+
+    captured = capsys.readouterr()
+    assert "[FAIL] required dependencies for moss_nano_onnx" in captured.out
+    assert "  - sentencepiece" in captured.out
+    assert 'pip install "rapidtts[moss_nano]"' in captured.out
+
+
 def test_text_cli_synthesizes_and_saves_audio(monkeypatch, tmp_path):
     seen = {}
     response = FakeSynthesisResponse(

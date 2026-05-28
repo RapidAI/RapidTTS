@@ -41,11 +41,16 @@ MODEL_DEPENDENCIES = {
         "pypinyin",
         "tokenizers",
     ],
+    "moss_nano_onnx": [
+        "librosa",
+        "sentencepiece",
+    ],
 }
 
 MODEL_INSTALL_HINTS = {
     "kokoro_onnx": 'pip install "rapidtts[kokoro]"',
     "melo_onnx": 'pip install "rapidtts[melo]"',
+    "moss_nano_onnx": 'pip install "rapidtts[moss_nano]"',
 }
 
 def get_default_model_name() -> str:

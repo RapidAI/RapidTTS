@@ -55,6 +55,7 @@ def test_setup_default_dependencies_exclude_backend_specific_packages():
     assert "espeakng-loader>=0.2.4,<1.0" not in default_requires
     assert "g2p_en>=2.1.0,<3.0" not in default_requires
     assert "librosa>=0.11.0,<1.0" not in default_requires
+    assert "sentencepiece>=0.2.0,<1.0" not in default_requires
     assert "tokenizers>=0.13.3,<1.0" not in default_requires
 
 
@@ -76,6 +77,14 @@ def test_setup_melo_extra_dependencies_are_separate():
     assert "tokenizers>=0.13.3,<1.0" in melo_requires
 
 
+def test_setup_moss_nano_extra_dependencies_are_separate():
+    groups = _load_requirement_groups()
+    moss_nano_requires = groups["moss_nano"]
+
+    assert "librosa>=0.11.0,<1.0" in moss_nano_requires
+    assert "sentencepiece>=0.2.0,<1.0" in moss_nano_requires
+
+
 def test_setup_reads_dependency_groups_from_requirements_file():
     setup_ast = _load_setup_ast()
     requirement_groups = _assignment_value(setup_ast, "REQUIREMENT_GROUPS")
@@ -87,10 +96,12 @@ def test_setup_reads_dependency_groups_from_requirements_file():
     common_requires = _assignment_value(setup_ast, "COMMON_REQUIRES")
     kokoro_requires = _assignment_value(setup_ast, "KOKORO_REQUIRES")
     melo_requires = _assignment_value(setup_ast, "MELO_REQUIRES")
+    moss_nano_requires = _assignment_value(setup_ast, "MOSS_NANO_REQUIRES")
 
     assert common_requires.slice.value == "common"
     assert kokoro_requires.slice.value == "kokoro"
     assert melo_requires.slice.value == "melo"
+    assert moss_nano_requires.slice.value == "moss_nano"
 
 
 def test_setup_install_requires_and_extras_use_group_variables():
@@ -103,4 +114,4 @@ def test_setup_install_requires_and_extras_use_group_variables():
     extras = keywords["extras_require"]
     assert isinstance(extras, ast.Dict)
     extra_keys = [ast.literal_eval(key) for key in extras.keys]
-    assert extra_keys == ["kokoro", "melo", "all"]
+    assert extra_keys == ["kokoro", "melo", "moss_nano", "all"]
