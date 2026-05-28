@@ -25,7 +25,7 @@ class MOSSNanoBackend(BaseTTSBackend):
         request_defaults: Optional[Dict[str, Any]] = None,
         engine_cfg_defaults: Optional[Dict[str, Any]] = None,
         text_normalizer_type: str = "wetext",
-    ) -> None:
+    ):
         self.request_defaults = request_defaults or {}
         self.engine_cfg_defaults = engine_cfg_defaults or {}
 
@@ -41,6 +41,8 @@ class MOSSNanoBackend(BaseTTSBackend):
         self.preprocessor = MOSSNanoPreprocessor(
             self.model_root_dir,
             text_normalizer_type=TextNormalizerType(text_normalizer_type),
+            engine_cfg_defaults=self.engine_cfg_defaults,
+            device=device,
         )
         self.postprocessor = MOSSNanoPostprocessor()
 

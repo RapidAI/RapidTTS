@@ -2,15 +2,15 @@
 # @Author: SWHL
 # @Contact: liekkaskono@163.com
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable, List
 
 import numpy as np
 
 from ...common.inference_engine.onnxruntime.main import OrtInferSession
 from ...common.io import load_json
 from .typings import MOSSNanoConfig, MOSSNanoInput
+from .preprocess.utils import flatten2d_int32, flatten3d_int32
 
-SAMPLE_MODE_FIXED = "fixed"
 DEFAULT_VOICE_CLONE_INTER_CHUNK_PAUSE_SHORT_SECONDS = 0.40
 DEFAULT_VOICE_CLONE_INTER_CHUNK_PAUSE_LONG_SECONDS = 0.24
 
@@ -38,7 +38,7 @@ class MOSSNanoModel:
 
         self.rng = np.random.default_rng(1234)
 
-    def speak(self, inputs: list[MOSSNanoInput]):
+    def speak(self, inputs: list[MOSSNanoInput]) -> List[np.ndarray]:
         all_waveforms: list[np.ndarray] = []
         all_generated_frames: list[list[int]] = []
 
@@ -61,11 +61,6 @@ class MOSSNanoModel:
                         np.zeros((pause_samples, channels), dtype=np.float32)
                     )
         return all_waveforms
-
-    def synthesize_single_chunk(self, request_rows):
-        generated_frames = self.generate_audio_frames(request_rows)
-        waveform = self.decode_full_audio_safe(generated_frames)
-        return generated_frames, waveform
 
     def create_sessions(self) -> dict[str, OrtInferSession]:
         models = {
@@ -104,19 +99,18 @@ class MOSSNanoModel:
         request_rows: dict[str, list[list[int]]],
         on_frame: Callable[[list[list[int]], int, list[int]], None] | None = None,
     ) -> list[list[int]]:
-        prefill_ids, prefill_dims = _flatten3d_int32([request_rows["inputIds"]])
-        prefill_mask, prefill_mask_dims = _flatten2d_int32(
-            request_rows["attentionMask"]
-        )
+        prefill_ids, prefill_dims = flatten3d_int32([request_rows["inputIds"]])
+        prefill_mask, prefill_mask_dims = flatten2d_int32(request_rows["attentionMask"])
         outputs = self.sessions["prefill"](
             {
                 "input_ids": prefill_ids.reshape(prefill_dims),
                 "attention_mask": prefill_mask.reshape(prefill_mask_dims),
             }
         )
-        output_names = self.sessions["prefill"].get_output_names()
+
+        output_names = self.sessions["prefill"].output_names
         named_outputs = dict(zip(output_names, outputs, strict=True))
-        global_hidden = _extract_last_hidden(named_outputs["global_hidden"])
+        global_hidden = self.extract_last_hidden(named_outputs["global_hidden"])
 
         past_valid_length = sum(int(item) for item in request_rows["attentionMask"][0])
         past_by_name = {
@@ -169,11 +163,13 @@ class MOSSNanoModel:
                 decode_feeds[input_name] = past_by_name[input_name]
 
             decode_outputs = self.sessions["decode"](decode_feeds)
-            decode_output_names = self.sessions["decode"].get_output_names()
+            decode_output_names = self.sessions["decode"].output_names
             named_decode_outputs = dict(
                 zip(decode_output_names, decode_outputs, strict=True)
             )
-            global_hidden = _extract_last_hidden(named_decode_outputs["global_hidden"])
+            global_hidden = self.extract_last_hidden(
+                named_decode_outputs["global_hidden"]
+            )
             past_valid_length += 1
             past_by_name = {
                 output_name.replace("present_", "past_"): named_decode_outputs[
@@ -230,7 +226,7 @@ class MOSSNanoModel:
                 "audio_random_u": audio_random_u,
             },
         )
-        output_names = self.sessions["local_fixed_sampled_frame"].get_output_names()
+        output_names = self.sessions["local_fixed_sampled_frame"].output_names
         named_outputs = dict(zip(output_names, outputs, strict=True))
         frame_token_ids = (
             np.asarray(named_outputs["frame_token_ids"])
@@ -246,7 +242,7 @@ class MOSSNanoModel:
     def decode_full_audio_safe(self, generated_frames: list[list[int]]) -> np.ndarray:
         try:
             channel_arrays, _audio_length = self.decode_full_audio(generated_frames)
-            return _merge_audio_channels(channel_arrays)
+            return self.merge_audio_channels(channel_arrays)
         except Exception as exc:
             raise RuntimeError(
                 f"full codec decode failed, falling back to incremental decode: {exc}"
@@ -257,7 +253,8 @@ class MOSSNanoModel:
     ) -> tuple[list[np.ndarray], int]:
         if not generated_frames:
             return [], 0
-        audio_codes, dims = _flatten3d_int32([generated_frames])
+
+        audio_codes, dims = flatten3d_int32([generated_frames])
         outputs = self.sessions["codec_decode"](
             {
                 "audio_codes": audio_codes.reshape(dims),
@@ -266,74 +263,56 @@ class MOSSNanoModel:
                 ),
             }
         )
-        output_names = self.sessions["codec_decode"].get_output_names()
+
+        output_names = self.sessions["codec_decode"].output_names
         named_outputs = dict(zip(output_names, outputs, strict=True))
         audio_length = int(named_outputs["audio_lengths"].reshape(-1)[0])
-        return _slice_channel_major_audio(
+        return self.slice_channel_major_audio(
             named_outputs["audio"], 0, audio_length
         ), audio_length
 
+    @staticmethod
+    def slice_channel_major_audio(
+        audio: np.ndarray, start_sample: int = 0, end_sample: int | None = None
+    ) -> list[np.ndarray]:
+        if audio.ndim != 3 or audio.shape[0] != 1:
+            raise ValueError(f"Unexpected audio tensor shape: {audio.shape}")
 
-def _slice_channel_major_audio(
-    audio: np.ndarray, start_sample: int = 0, end_sample: int | None = None
-) -> list[np.ndarray]:
-    if audio.ndim != 3 or audio.shape[0] != 1:
-        raise ValueError(f"Unexpected audio tensor shape: {audio.shape}")
-    channels = int(audio.shape[1])
-    total_samples = int(audio.shape[2])
-    start = max(0, int(start_sample))
-    end = (
-        total_samples
-        if end_sample is None
-        else max(start, min(int(end_sample), total_samples))
-    )
-    return [
-        audio[0, channel_index, start:end].astype(np.float32, copy=False)
-        for channel_index in range(channels)
-    ]
+        channels = int(audio.shape[1])
+        total_samples = int(audio.shape[2])
 
+        start = max(0, int(start_sample))
+        end = (
+            total_samples
+            if end_sample is None
+            else max(start, min(int(end_sample), total_samples))
+        )
+        return [
+            audio[0, channel_index, start:end].astype(np.float32, copy=False)
+            for channel_index in range(channels)
+        ]
 
-def _merge_audio_channels(channel_arrays: list[np.ndarray]) -> np.ndarray:
-    if not channel_arrays:
-        return np.zeros((0, 1), dtype=np.float32)
-    if len(channel_arrays) == 1:
-        return np.asarray(channel_arrays[0], dtype=np.float32).reshape(-1, 1)
-    min_length = min(int(channel.shape[0]) for channel in channel_arrays)
-    trimmed = [
-        np.asarray(channel[:min_length], dtype=np.float32) for channel in channel_arrays
-    ]
-    return np.stack(trimmed, axis=1)
+    @staticmethod
+    def merge_audio_channels(channel_arrays: list[np.ndarray]) -> np.ndarray:
+        if not channel_arrays:
+            return np.zeros((0, 1), dtype=np.float32)
 
+        if len(channel_arrays) == 1:
+            return np.asarray(channel_arrays[0], dtype=np.float32).reshape(-1, 1)
 
-def _flatten3d_int32(nested: list[list[list[int]]]) -> tuple[np.ndarray, list[int]]:
-    dim0 = len(nested)
-    dim1 = len(nested[0])
-    dim2 = len(nested[0][0])
-    data = np.zeros((dim0 * dim1 * dim2,), dtype=np.int32)
-    offset = 0
-    for i in range(dim0):
-        for j in range(dim1):
-            for k in range(dim2):
-                data[offset] = int(nested[i][j][k])
-                offset += 1
-    return data, [dim0, dim1, dim2]
+        min_length = min(int(channel.shape[0]) for channel in channel_arrays)
+        trimmed = [
+            np.asarray(channel[:min_length], dtype=np.float32)
+            for channel in channel_arrays
+        ]
+        return np.stack(trimmed, axis=1)
 
+    @staticmethod
+    def extract_last_hidden(hidden_states: np.ndarray) -> np.ndarray:
+        if hidden_states.ndim == 2:
+            return hidden_states.astype(np.float32, copy=False)
 
-def _flatten2d_int32(nested: list[list[int]]) -> tuple[np.ndarray, list[int]]:
-    dim0 = len(nested)
-    dim1 = len(nested[0])
-    data = np.zeros((dim0 * dim1,), dtype=np.int32)
-    offset = 0
-    for i in range(dim0):
-        for j in range(dim1):
-            data[offset] = int(nested[i][j])
-            offset += 1
-    return data, [dim0, dim1]
+        if hidden_states.ndim != 3 or hidden_states.shape[0] != 1:
+            raise ValueError(f"Unexpected global_hidden shape: {hidden_states.shape}")
 
-
-def _extract_last_hidden(hidden_states: np.ndarray) -> np.ndarray:
-    if hidden_states.ndim == 2:
-        return hidden_states.astype(np.float32, copy=False)
-    if hidden_states.ndim != 3 or hidden_states.shape[0] != 1:
-        raise ValueError(f"Unexpected global_hidden shape: {hidden_states.shape}")
-    return hidden_states[:, -1, :].astype(np.float32, copy=False)
+        return hidden_states[:, -1, :].astype(np.float32, copy=False)
