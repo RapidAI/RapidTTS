@@ -93,7 +93,7 @@ class MOSSNanoBackend(BaseTTSBackend):
             default_language=defaults["language"],
             voices=self.get_voices(),
             default_voice=defaults.get("voice"),
-            voice_source="configuration.json",
+            voice_source="browser_poc_manifest.json",
         )
 
     def normalize_request(self, request: SynthesisRequest) -> SynthesisRequest:

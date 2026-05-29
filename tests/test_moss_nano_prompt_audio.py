@@ -4,6 +4,10 @@ from pathlib import Path
 import numpy as np
 
 from rapidtts.backends.moss_nano_onnx.preprocess import prompt_audio
+from rapidtts.backends.moss_nano_onnx.backend import MOSSNanoBackend
+from rapidtts.backends.moss_nano_onnx.preprocess.preprocessor import (
+    MOSSNanoPreprocessor,
+)
 from rapidtts.backends.moss_nano_onnx.preprocess.prompt_audio import (
     PromptAudioProcessor,
 )
@@ -113,3 +117,41 @@ def test_prompt_audio_path_initializes_encoder_lazily_and_reuses_it(monkeypatch)
     }
     assert len(session_calls) == 2
     assert session_calls[0]["input_lengths"].tolist() == [3]
+
+
+def test_moss_nano_preprocessor_get_voices_reads_manifest_order() -> None:
+    preprocessor = MOSSNanoPreprocessor.__new__(MOSSNanoPreprocessor)
+    preprocessor.prompt_audio_processor = type(
+        "FakePromptAudioProcessor",
+        (),
+        {"builtin_voices": make_manifest()["builtin_voices"]},
+    )()
+
+    assert preprocessor.get_voices() == ["Junhao", "Alice"]
+
+
+def test_moss_nano_backend_capability_describes_manifest_voices() -> None:
+    backend = MOSSNanoBackend.__new__(MOSSNanoBackend)
+    backend.request_defaults = {
+        "language": "ZH_MIX_EN",
+        "voice": "Junhao",
+        "speed": 1.0,
+        "sample_rate": 48000,
+        "audio_format": "wav",
+        "extras": {},
+    }
+    backend.preprocessor = MOSSNanoPreprocessor.__new__(MOSSNanoPreprocessor)
+    backend.preprocessor.prompt_audio_processor = type(
+        "FakePromptAudioProcessor",
+        (),
+        {"builtin_voices": make_manifest()["builtin_voices"]},
+    )()
+
+    capability = backend.get_capability()
+
+    assert capability.name == "moss_nano_onnx"
+    assert capability.languages == ["ZH_MIX_EN"]
+    assert capability.default_language == "ZH_MIX_EN"
+    assert capability.voices == ["Junhao", "Alice"]
+    assert capability.default_voice == "Junhao"
+    assert capability.voice_source == "browser_poc_manifest.json"

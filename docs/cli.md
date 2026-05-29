@@ -31,6 +31,7 @@ rapidtts text "你好，RapidTTS" outputs/1.wav
 ```bash
 rapidtts text "你好，RapidTTS" outputs/kokoro.wav --model kokoro_onnx
 rapidtts text "你好，RapidTTS" outputs/melo.wav --model melo_onnx
+rapidtts text "你好，RapidTTS" outputs/moss_nano.wav --model moss_nano_onnx
 ```
 
 指定语言：
@@ -56,16 +57,32 @@ MeloTTS ONNX 当前只暴露 `zf_001`：
 rapidtts text "你好，RapidTTS" outputs/melo_zf_001.wav --model melo_onnx --voice zf_001
 ```
 
+MOSS Nano ONNX 的内置音色来自模型 manifest，默认音色是 `Junhao`：
+
+```text
+Junhao, Zhiming, Weiguo, Xiaoyu, Yuewen, Lingyu, Trump, Ava, Bella, Adam, Nathan, Soyo, Saki, Mortis, Umiri, Mei, Anon, Arisa
+```
+
+```bash
+rapidtts voices moss_nano_onnx
+rapidtts text "你好，RapidTTS" outputs/moss_nano_ava.wav --model moss_nano_onnx --voice Ava
+```
+
+当前 CLI 的 `text` 子命令支持 MOSS Nano 内置音色合成；参考音频克隆需要使用 Python API 的 `SynthesisRequest.extras["prompt_audio_path"]`。
+
 指定语速和采样率：
 
 ```bash
 rapidtts text "你好，RapidTTS" outputs/fast.wav --speed 1.2 --sample-rate 16000
 ```
 
+注意：MOSS Nano ONNX 当前按模型输出返回 48000 Hz 音频，不做 `--speed` 变速处理。
+
 使用自定义模型目录：
 
 ```bash
 rapidtts text "你好，RapidTTS" outputs/1.wav --model kokoro_onnx --model-dir /path/to/kokoro_onnx
+rapidtts text "你好，RapidTTS" outputs/moss_nano.wav --model moss_nano_onnx --model-dir /path/to/moss_nano_onnx
 ```
 
 ## 查看模型能力
@@ -89,6 +106,13 @@ rapidtts info melo_onnx
 rapidtts voices melo_onnx
 ```
 
+查看 MOSS Nano ONNX：
+
+```bash
+rapidtts info moss_nano_onnx
+rapidtts voices moss_nano_onnx
+```
+
 ## 下载模型
 
 下载默认模型：
@@ -97,10 +121,17 @@ rapidtts voices melo_onnx
 rapidtts download kokoro_onnx
 ```
 
+下载 MOSS Nano ONNX：
+
+```bash
+rapidtts download moss_nano_onnx
+```
+
 下载到自定义目录：
 
 ```bash
 rapidtts download kokoro_onnx --save-dir /path/to/kokoro_onnx
+rapidtts download moss_nano_onnx --save-dir /path/to/moss_nano_onnx
 ```
 
 关闭进度条：
@@ -114,6 +145,8 @@ rapidtts download kokoro_onnx --no-progress
 ```bash
 rapidtts download moss_nano_onnx --group prompt_audio_encoder
 ```
+
+`prompt_audio_encoder` 是 MOSS Nano 参考音频克隆所需的可选文件组。只使用内置音色时不需要下载这个文件组；Python API 首次使用 `extras["prompt_audio_path"]` 时也会按需自动下载。
 
 只下载可选模型文件组，不重复处理基础模型文件：
 
@@ -133,6 +166,7 @@ rapidtts check
 
 ```bash
 rapidtts check melo_onnx
+rapidtts check moss_nano_onnx
 ```
 
 检查自定义模型目录：

@@ -12,6 +12,7 @@ pip install "rapidtts[kokoro]"
 pip install rapidtts            # 只安装核心依赖
 pip install "rapidtts[kokoro]"  # 安装默认 Kokoro ONNX 后端
 pip install "rapidtts[melo]"    # 安装 MeloTTS ONNX 后端
+pip install "rapidtts[moss_nano]" # 安装 MOSS Nano ONNX 后端
 pip install "rapidtts[all]"     # 安装全部后端依赖
 ```
 
@@ -65,4 +66,26 @@ rapidtts check kokoro_onnx --model-dir /path/to/kokoro_onnx
 ```bash
 pip install "rapidtts[melo]"
 rapidtts check melo_onnx
+```
+
+## MOSS Nano ONNX
+
+使用 MOSS Nano ONNX 时安装对应 extra：
+
+```bash
+pip install "rapidtts[moss_nano]"
+rapidtts check moss_nano_onnx
+```
+
+MOSS Nano 的基础模型文件支持内置音色合成。使用 `SynthesisRequest.extras["prompt_audio_path"]` 传入自定义参考音频时，还需要 `prompt_audio_encoder` 可选模型文件组；运行合成时会按需自动下载，也可以提前下载：
+
+```bash
+rapidtts download moss_nano_onnx --group prompt_audio_encoder
+```
+
+如果基础模型文件已经存在，只想检查或下载参考音频编码器：
+
+```bash
+rapidtts check moss_nano_onnx --group prompt_audio_encoder --no-base-files
+rapidtts download moss_nano_onnx --group prompt_audio_encoder --no-base-files
 ```

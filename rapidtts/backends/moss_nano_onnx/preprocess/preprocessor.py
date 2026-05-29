@@ -67,3 +67,10 @@ class MOSSNanoPreprocessor:
             )
             results.append(input)
         return results
+
+    def get_voices(self) -> list[str]:
+        return [
+            str(voice_row["voice"])
+            for voice_row in self.prompt_audio_processor.builtin_voices
+            if "voice" in voice_row
+        ]
