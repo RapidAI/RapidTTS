@@ -55,6 +55,7 @@ REQUIREMENT_GROUPS = read_requirement_groups("requirements.txt")
 COMMON_REQUIRES = REQUIREMENT_GROUPS["common"]
 KOKORO_REQUIRES = REQUIREMENT_GROUPS["kokoro"]
 MELO_REQUIRES = REQUIREMENT_GROUPS["melo"]
+MOSS_NANO_REQUIRES = REQUIREMENT_GROUPS["moss_nano"]
 
 obtainer = GetPyPiLatestVersion()
 try:
@@ -86,7 +87,8 @@ setuptools.setup(
     extras_require={
         "kokoro": KOKORO_REQUIRES,
         "melo": MELO_REQUIRES,
-        "all": KOKORO_REQUIRES + MELO_REQUIRES,
+        "moss_nano": MOSS_NANO_REQUIRES,
+        "all": KOKORO_REQUIRES + MELO_REQUIRES + MOSS_NANO_REQUIRES,
     },
     packages=setuptools.find_packages(include=[MODULE_NAME, f"{MODULE_NAME}.*"]),
     package_data={MODULE_NAME: ["configs/*.yaml"]},

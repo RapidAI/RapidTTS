@@ -6,6 +6,8 @@ from typing import Any
 
 import numpy as np
 
+from ..common.audio import AudioSaveBackend, save_audio
+
 
 @dataclass
 class SynthesisResponse:
@@ -13,8 +15,16 @@ class SynthesisResponse:
     sample_rate: int
     audio_format: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    audio_save_backend: AudioSaveBackend = AudioSaveBackend.SOUNDFILE
+
+    def __post_init__(self):
+        self.audio_save_backend = AudioSaveBackend(self.audio_save_backend)
 
     def save(self, file_path: str):
-        import soundfile
-
-        soundfile.write(file_path, self.audio, samplerate=self.sample_rate)
+        return save_audio(
+            file_path,
+            self.audio,
+            self.sample_rate,
+            audio_format=self.audio_format,
+            backend=self.audio_save_backend,
+        )

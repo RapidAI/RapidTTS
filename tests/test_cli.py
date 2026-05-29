@@ -27,10 +27,18 @@ class FakeSynthesisResponse:
 def test_download_cli_passes_model_dir_and_progress_options(monkeypatch, tmp_path):
     seen = {}
 
-    def fake_ensure_model_assets(model_name, local_dir=None, show_progress=True):
+    def fake_ensure_model_assets(
+        model_name,
+        local_dir=None,
+        show_progress=True,
+        groups=None,
+        include_base_files=True,
+    ):
         seen["model_name"] = model_name
         seen["local_dir"] = local_dir
         seen["show_progress"] = show_progress
+        seen["groups"] = groups
+        seen["include_base_files"] = include_base_files
         return Path(local_dir)
 
     monkeypatch.setattr(cli, "ensure_model_assets", fake_ensure_model_assets)
@@ -51,7 +59,59 @@ def test_download_cli_passes_model_dir_and_progress_options(monkeypatch, tmp_pat
         "model_name": "melo_onnx",
         "local_dir": str(tmp_path),
         "show_progress": False,
+        "groups": None,
+        "include_base_files": True,
     }
+
+
+def test_download_cli_passes_optional_asset_groups(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake_ensure_model_assets(
+        model_name,
+        local_dir=None,
+        show_progress=True,
+        groups=None,
+        include_base_files=True,
+    ):
+        seen["model_name"] = model_name
+        seen["local_dir"] = local_dir
+        seen["show_progress"] = show_progress
+        seen["groups"] = groups
+        seen["include_base_files"] = include_base_files
+        return Path(local_dir)
+
+    monkeypatch.setattr(cli, "ensure_model_assets", fake_ensure_model_assets)
+
+    exit_code = cli.main(
+        [
+            "download",
+            "moss_nano_onnx",
+            "--save-dir",
+            str(tmp_path),
+            "--group",
+            "prompt_audio_encoder",
+            "--no-base-files",
+            "--quiet",
+        ]
+    )
+
+    assert exit_code == 0
+    assert seen == {
+        "model_name": "moss_nano_onnx",
+        "local_dir": str(tmp_path),
+        "show_progress": True,
+        "groups": ["prompt_audio_encoder"],
+        "include_base_files": False,
+    }
+
+
+def test_download_cli_rejects_no_base_files_without_group(capsys):
+    exit_code = cli.main(["download", "melo_onnx", "--no-base-files", "--quiet"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "--no-base-files requires at least one --group" in captured.out
 
 
 def test_cli_uses_configured_default_model(monkeypatch):
@@ -91,7 +151,11 @@ def test_check_cli_success_without_backend_init(monkeypatch, capsys):
     monkeypatch.setattr(cli, "_check_package_import", lambda: True)
     monkeypatch.setattr(cli, "_check_dependencies", lambda model_name: True)
     monkeypatch.setattr(cli, "_check_configs", lambda model_name: True)
-    monkeypatch.setattr(cli, "_check_model_files", lambda model_name, model_dir: True)
+    monkeypatch.setattr(
+        cli,
+        "_check_model_files",
+        lambda model_name, model_dir, groups=None, include_base_files=True: True,
+    )
 
     def fake_check_backend_init(model_name, model_dir):
         nonlocal backend_called
@@ -108,13 +172,60 @@ def test_check_cli_success_without_backend_init(monkeypatch, capsys):
     assert backend_called is False
 
 
+def test_check_cli_passes_optional_asset_groups(monkeypatch):
+    seen = {}
+
+    monkeypatch.setattr(cli, "_check_package_import", lambda: True)
+    monkeypatch.setattr(cli, "_check_dependencies", lambda model_name: True)
+    monkeypatch.setattr(cli, "_check_configs", lambda model_name: True)
+
+    def fake_check_model_files(
+        model_name,
+        model_dir,
+        groups=None,
+        include_base_files=True,
+    ):
+        seen["model_name"] = model_name
+        seen["model_dir"] = model_dir
+        seen["groups"] = groups
+        seen["include_base_files"] = include_base_files
+        return True
+
+    monkeypatch.setattr(cli, "_check_model_files", fake_check_model_files)
+
+    exit_code = cli.main(
+        [
+            "check",
+            "moss_nano_onnx",
+            "--model-dir",
+            "custom_model_dir",
+            "--group",
+            "prompt_audio_encoder",
+            "--no-base-files",
+            "--quiet",
+        ]
+    )
+
+    assert exit_code == 0
+    assert seen == {
+        "model_name": "moss_nano_onnx",
+        "model_dir": "custom_model_dir",
+        "groups": ["prompt_audio_encoder"],
+        "include_base_files": False,
+    }
+
+
 def test_check_cli_runs_backend_init_when_requested(monkeypatch):
     seen = {}
 
     monkeypatch.setattr(cli, "_check_package_import", lambda: True)
     monkeypatch.setattr(cli, "_check_dependencies", lambda model_name: True)
     monkeypatch.setattr(cli, "_check_configs", lambda model_name: True)
-    monkeypatch.setattr(cli, "_check_model_files", lambda model_name, model_dir: True)
+    monkeypatch.setattr(
+        cli,
+        "_check_model_files",
+        lambda model_name, model_dir, groups=None, include_base_files=True: True,
+    )
 
     def fake_check_backend_init(model_name, model_dir):
         seen["model_name"] = model_name
@@ -142,7 +253,11 @@ def test_check_cli_returns_failure_when_model_assets_fail(monkeypatch, capsys):
     monkeypatch.setattr(cli, "_check_package_import", lambda: True)
     monkeypatch.setattr(cli, "_check_dependencies", lambda model_name: True)
     monkeypatch.setattr(cli, "_check_configs", lambda model_name: True)
-    monkeypatch.setattr(cli, "_check_model_files", lambda model_name, model_dir: False)
+    monkeypatch.setattr(
+        cli,
+        "_check_model_files",
+        lambda model_name, model_dir, groups=None, include_base_files=True: False,
+    )
 
     exit_code = cli.main(["check", "melo_onnx", "--quiet"])
 
@@ -201,6 +316,22 @@ def test_check_dependencies_reports_melo_extra_install_hint(monkeypatch, capsys)
     assert "[FAIL] required dependencies for melo_onnx" in captured.out
     assert "  - g2p_en" in captured.out
     assert 'pip install "rapidtts[melo]"' in captured.out
+
+
+def test_check_dependencies_reports_moss_nano_extra_install_hint(monkeypatch, capsys):
+    def fake_find_spec(name):
+        if name == "sentencepiece":
+            return None
+        return object()
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", fake_find_spec)
+
+    assert cli._check_dependencies("moss_nano_onnx") is False
+
+    captured = capsys.readouterr()
+    assert "[FAIL] required dependencies for moss_nano_onnx" in captured.out
+    assert "  - sentencepiece" in captured.out
+    assert 'pip install "rapidtts[moss_nano]"' in captured.out
 
 
 def test_text_cli_synthesizes_and_saves_audio(monkeypatch, tmp_path):
@@ -425,3 +556,178 @@ def test_check_model_assets_rejects_unknown_model(monkeypatch):
 
     with pytest.raises(ValueError, match="Unsupported model"):
         model_assets.check_model_assets("unknown")
+
+
+def test_ensure_model_assets_can_download_only_optional_group(monkeypatch, tmp_path):
+    cfg = OmegaConf.create(
+        {
+            "moss_nano_onnx": {
+                "base_url": "https://example.com/models",
+                "local_dir": "unused",
+                "files": [
+                    {
+                        "name": "base.onnx",
+                        "sha256": "0" * 64,
+                    },
+                ],
+                "optional_files": {
+                    "prompt_audio_encoder": [
+                        {
+                            "name": "encoder.onnx",
+                            "sha256": "1" * 64,
+                        },
+                        {
+                            "name": "encoder.data",
+                            "sha256": "2" * 64,
+                        },
+                    ]
+                },
+            }
+        }
+    )
+    seen = []
+
+    def fake_ensure_file(url, save_path, sha256, show_progress=True):
+        seen.append(
+            {
+                "url": url,
+                "save_path": save_path,
+                "sha256": sha256,
+                "show_progress": show_progress,
+            }
+        )
+
+    monkeypatch.setattr(model_assets, "load_models_config", lambda: cfg)
+    monkeypatch.setattr(model_assets, "ensure_file", fake_ensure_file)
+
+    model_dir = model_assets.ensure_model_assets(
+        "moss_nano_onnx",
+        local_dir=tmp_path,
+        show_progress=False,
+        groups=["prompt_audio_encoder"],
+        include_base_files=False,
+    )
+
+    assert model_dir == tmp_path
+    assert [item["save_path"].name for item in seen] == [
+        "encoder.onnx",
+        "encoder.data",
+    ]
+    assert [item["url"] for item in seen] == [
+        "https://example.com/models/encoder.onnx",
+        "https://example.com/models/encoder.data",
+    ]
+    assert [item["show_progress"] for item in seen] == [False, False]
+
+
+def test_check_model_assets_can_check_base_and_optional_group(monkeypatch, tmp_path):
+    base_file = tmp_path / "base.onnx"
+    encoder_file = tmp_path / "encoder.onnx"
+    base_file.write_text("base", encoding="utf-8")
+    encoder_file.write_text("encoder", encoding="utf-8")
+
+    cfg = OmegaConf.create(
+        {
+            "moss_nano_onnx": {
+                "base_url": "https://example.com/models",
+                "local_dir": "unused",
+                "files": [
+                    {
+                        "name": "base.onnx",
+                        "sha256": hashlib.sha256(b"base").hexdigest(),
+                    },
+                ],
+                "optional_files": {
+                    "prompt_audio_encoder": [
+                        {
+                            "name": "encoder.onnx",
+                            "sha256": hashlib.sha256(b"encoder").hexdigest(),
+                        }
+                    ]
+                },
+            }
+        }
+    )
+
+    monkeypatch.setattr(model_assets, "load_models_config", lambda: cfg)
+
+    result = model_assets.check_model_assets(
+        "moss_nano_onnx",
+        local_dir=tmp_path,
+        groups=["prompt_audio_encoder"],
+    )
+
+    assert result.ok is True
+    assert result.missing_files == []
+    assert result.hash_mismatch_files == []
+
+
+def test_model_assets_reject_unknown_optional_group(monkeypatch, tmp_path):
+    cfg = OmegaConf.create(
+        {
+            "moss_nano_onnx": {
+                "base_url": "https://example.com/models",
+                "local_dir": "unused",
+                "files": [],
+                "optional_files": {
+                    "prompt_audio_encoder": [],
+                },
+            }
+        }
+    )
+
+    monkeypatch.setattr(model_assets, "load_models_config", lambda: cfg)
+
+    with pytest.raises(ValueError, match='Optional file group "bad_group"'):
+        model_assets.check_model_assets(
+            "moss_nano_onnx",
+            local_dir=tmp_path,
+            groups=["bad_group"],
+        )
+
+
+def test_check_model_files_reports_download_command_with_asset_groups(
+    monkeypatch, capsys
+):
+    result = model_assets.ModelAssetCheckResult(
+        model_name="moss_nano_onnx",
+        model_dir=Path("/models/moss"),
+        missing_files=[
+            model_assets.ModelAssetIssue(
+                name="MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.onnx",
+                path=Path("/models/moss/encoder.onnx"),
+                expected_sha256="0" * 64,
+            )
+        ],
+        hash_mismatch_files=[],
+    )
+
+    def fake_check_model_assets(
+        model_name,
+        local_dir=None,
+        groups=None,
+        include_base_files=True,
+    ):
+        assert model_name == "moss_nano_onnx"
+        assert local_dir == "custom_model_dir"
+        assert groups == ["prompt_audio_encoder"]
+        assert include_base_files is False
+        return result
+
+    monkeypatch.setattr(cli, "check_model_assets", fake_check_model_assets)
+
+    assert (
+        cli._check_model_files(
+            "moss_nano_onnx",
+            "custom_model_dir",
+            groups=["prompt_audio_encoder"],
+            include_base_files=False,
+        )
+        is False
+    )
+
+    captured = capsys.readouterr()
+    assert (
+        "rapidtts download moss_nano_onnx --group prompt_audio_encoder "
+        "--no-base-files --save-dir custom_model_dir"
+    ) in captured.out

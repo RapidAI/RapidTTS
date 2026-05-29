@@ -25,7 +25,7 @@ def ensure_file(
     expected_sha256 = sha256.lower()
 
     if path.exists() and sha256_file(path) == expected_sha256:
-        logger.info(f'File "{path}" already exists and matches the expected SHA256.')
+        logger.info(f'✅ File "{path}" already exists and matches the expected SHA256.')
         return path
 
     download_file(url, path, timeout=timeout, show_progress=show_progress)

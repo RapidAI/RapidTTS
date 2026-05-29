@@ -1,3 +1,4 @@
+_others/
 outputs/
 *.vscode
 *.onnx
@@ -9,7 +10,6 @@ tmp
 models/
 
 temp/
-.DS_Store
 
 *.bin
 

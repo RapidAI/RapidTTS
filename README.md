@@ -16,17 +16,17 @@
 
 ## 简介
 
-RapidTTS 是一个轻量级文本转语音工具，面向本地快速推理。当前默认后端是 `kokoro_onnx`，同时支持 `melo_onnx`。
+RapidTTS 是一个轻量级文本转语音工具，面向本地快速推理。当前默认后端是 `kokoro_onnx`，同时支持 `melo_onnx` 和 `moss_nano_onnx`。
 
 ## 特性
 
-- 支持 Kokoro ONNX 和 MeloTTS ONNX 推理
+- 支持 Kokoro ONNX, MeloTTS ONNX 和 MOSS Nano ONNX 推理
 - 支持中文、英文和中英混合文本
 - 支持查询模型语言、默认参数和音色能力
 - 模型文件可自动下载，并使用 SHA256 校验
 - 同时提供 Python API 和命令行工具
 
-## [在线 demo](https://www.modelscope.cn/studios/RapidAI/RapidTTS/summary) 
+## [在线 demo](https://www.modelscope.cn/studios/RapidAI/RapidTTS/summary)
 
 <a href="https://www.modelscope.cn/studios/RapidAI/RapidTTS/summary" target="_blank"><img src="https://github.com/RapidAI/RapidTTS/releases/download/v1.2.0/online_demo.jpg"></a>
 
@@ -36,6 +36,12 @@ RapidTTS 是一个轻量级文本转语音工具，面向本地快速推理。�
 
 ```bash
 pip install "rapidtts[kokoro]"
+```
+
+使用 MOSS Nano ONNX 时安装对应 extra：
+
+```bash
+pip install "rapidtts[moss_nano]"
 ```
 
 其他安装方式见 [安装说明](docs/installation.md)。
@@ -67,6 +73,29 @@ resp = tts.synthesize(
 resp.save("outputs/zm_009.wav")
 ```
 
+使用 MOSS Nano 内置音色：
+
+```python
+from rapidtts import RapidTTS, SynthesisRequest, TTSModel
+
+tts = RapidTTS(model=TTSModel.MOSS_NANO_ONNX)
+resp = tts.synthesize(
+    SynthesisRequest(
+        text="你好，RapidTTS",
+        voice="Junhao",
+    )
+)
+resp.save("outputs/moss_nano_junhao.wav")
+```
+
+当前 MOSS Nano 内置音色：
+
+```text
+Junhao, Zhiming, Weiguo, Xiaoyu, Yuewen, Lingyu, Trump, Ava, Bella, Adam, Nathan, Soyo, Saki, Mortis, Umiri, Mei, Anon, Arisa
+```
+
+MOSS Nano 也支持通过 `extras["prompt_audio_path"]` 传入参考音频。首次使用参考音频时会自动下载 `prompt_audio_encoder` 可选模型文件组。
+
 更多示例见 [Python API](docs/python_api.md)。
 
 ### 命令行
@@ -79,6 +108,7 @@ rapidtts text "你好，RapidTTS" outputs/1.wav
 
 ```bash
 rapidtts text "你好，RapidTTS" outputs/kokoro.wav --model kokoro_onnx
+rapidtts text "你好，RapidTTS" outputs/moss_nano.wav --model moss_nano_onnx --voice Junhao
 ```
 
 指定模型和音色：
@@ -99,6 +129,7 @@ rapidtts text "你好，RapidTTS" outputs/zm_009.wav --model kokoro_onnx --voice
 
 ## 致谢
 
+- [MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano)
 - [kokoro](https://github.com/hexgrad/kokoro)
 - [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx)
 - [MeloTTS](https://github.com/myshell-ai/MeloTTS)

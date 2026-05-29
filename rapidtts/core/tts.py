@@ -9,6 +9,7 @@ from .config import (
     get_backend_init_defaults,
     get_backend_request_defaults,
     get_default_backend,
+    get_engine_config,
     load_config,
 )
 from .model_assets import ensure_model_assets
@@ -30,14 +31,17 @@ class RapidTTS:
 
         if model is None:
             model = TTSModel(get_default_backend(self.cfg))
+
         backend_name = model.value
         init_defaults = get_backend_init_defaults(self.cfg, backend_name)
         request_defaults = get_backend_request_defaults(self.cfg, backend_name)
+        engine_cfg = get_engine_config(config_path)
 
         init_kwargs = {
             **init_defaults,
             **kwargs,
             "request_defaults": request_defaults,
+            "engine_cfg_defaults": engine_cfg,
         }
         if "model_root_dir" not in kwargs:
             init_kwargs["model_root_dir"] = ensure_model_assets(backend_name)
@@ -55,6 +59,11 @@ class RapidTTS:
 
             return KokoroONNXBackend(**kwargs)
 
+        if model == TTSModel.MOSS_NANO_ONNX:
+            from ..backends.moss_nano_onnx.backend import MOSSNanoBackend
+
+            return MOSSNanoBackend(**kwargs)
+
         raise ValueError(f"Unsupported model: {model}")
 
     def synthesize(self, request: SynthesisRequest) -> SynthesisResponse:
@@ -70,6 +79,8 @@ class RapidTTS:
     def get_capability(self) -> ModelCapability:
         get_backend_capability = getattr(self.backend, "get_capability", None)
         if get_backend_capability is None:
-            raise NotImplementedError("Current backend does not expose capability metadata")
+            raise NotImplementedError(
+                "Current backend does not expose capability metadata"
+            )
 
         return get_backend_capability()

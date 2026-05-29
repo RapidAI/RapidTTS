@@ -38,10 +38,26 @@ resp = tts.synthesize(SynthesisRequest(text="你好，RapidTTS"))
 resp.save("melo.wav")
 ```
 
+使用 MOSS Nano ONNX：
+
+```python
+from rapidtts import RapidTTS, SynthesisRequest, TTSModel
+
+tts = RapidTTS(model=TTSModel.MOSS_NANO_ONNX)
+resp = tts.synthesize(
+    SynthesisRequest(
+        text="你好，RapidTTS",
+        voice="Junhao",
+    )
+)
+resp.save("moss_nano.wav")
+```
+
 可选模型：
 
 - `TTSModel.KOKORO_ONNX`：默认后端，支持多音色
 - `TTSModel.MELO_ONNX`：可选后端，当前只暴露 `zf_001` 音色
+- `TTSModel.MOSS_NANO_ONNX`：MOSS Nano 后端，支持内置音色和参考音频克隆
 
 ## 指定音色
 
@@ -87,6 +103,61 @@ resp = tts.synthesize(
 resp.save("melo_zf_001.wav")
 ```
 
+MOSS Nano ONNX 的内置音色也通过 `voice` 指定，默认音色是 `Junhao`：
+
+```python
+from rapidtts import RapidTTS, SynthesisRequest, TTSModel
+
+tts = RapidTTS(model=TTSModel.MOSS_NANO_ONNX)
+resp = tts.synthesize(
+    SynthesisRequest(
+        text="你好，RapidTTS",
+        voice="Ava",
+    )
+)
+resp.save("moss_nano_ava.wav")
+```
+
+MOSS Nano 的内置音色列表来自模型 manifest。当前内置音色如下：
+
+```text
+Junhao, Zhiming, Weiguo, Xiaoyu, Yuewen, Lingyu, Trump, Ava, Bella, Adam, Nathan, Soyo, Saki, Mortis, Umiri, Mei, Anon, Arisa
+```
+
+也可以运行时查询，避免本地模型文件更新后和文档不一致：
+
+```python
+from rapidtts import RapidTTS, TTSModel
+
+tts = RapidTTS(model=TTSModel.MOSS_NANO_ONNX)
+print(tts.get_voices())
+```
+
+## MOSS Nano 参考音频
+
+MOSS Nano ONNX 支持通过参考音频进行音色克隆。参考音频路径放在 `SynthesisRequest.extras["prompt_audio_path"]`：
+
+```python
+from rapidtts import RapidTTS, SynthesisRequest, TTSModel
+
+tts = RapidTTS(model=TTSModel.MOSS_NANO_ONNX)
+resp = tts.synthesize(
+    SynthesisRequest(
+        text="你好，RapidTTS",
+        extras={"prompt_audio_path": "/path/to/reference.wav"},
+    )
+)
+resp.save("moss_nano_clone.wav")
+```
+
+如果同时传入 `voice` 和 `prompt_audio_path`，MOSS Nano 会优先使用参考音频。首次使用参考音频时会自动下载 `prompt_audio_encoder` 可选模型文件组；也可以提前执行：
+
+```bash
+rapidtts download moss_nano_onnx --group prompt_audio_encoder
+```
+
+`extras["prompt_text"]` 也会被读取并做文本归一化，保留给 MOSS Nano 请求扩展使用。
+
 ## 指定语言、语速和采样率
 
 ```python
@@ -111,6 +182,8 @@ resp.save("en.wav")
 - `TTSLanguage.EN`：英文
 - `TTSLanguage.ZH_MIX_EN`：中英混合
 
+注意：MOSS Nano ONNX 当前后处理会按模型输出返回 48000 Hz 音频，不做 `speed` 变速处理；如需变速或重采样，可在保存后用外部音频处理流程完成。
+
 ## 指定模型目录
 
 ```python
@@ -123,6 +196,17 @@ tts = RapidTTS(
 ```
 
 如果不指定 `model_root_dir`，RapidTTS 会使用默认模型目录，并在模型缺失时自动下载。
+
+MOSS Nano 的默认模型目录是 `models/moss_nano_onnx`，自定义目录示例：
+
+```python
+from rapidtts import RapidTTS, TTSModel
+
+tts = RapidTTS(
+    model=TTSModel.MOSS_NANO_ONNX,
+    model_root_dir="/path/to/moss_nano_onnx",
+)
+```
 
 ## 查看模型能力
 
@@ -172,4 +256,4 @@ tts = RapidTTS(
 |`speed`|语速，默认 `1.0`|
 |`sample_rate`|输出采样率|
 |`audio_format`|音频格式，默认 `wav`|
-|`extras`|后端扩展参数，不用于传递 `voice`|
+|`extras`|后端扩展参数，不用于传递 `voice`；MOSS Nano 可使用 `prompt_audio_path`、`prompt_text`|

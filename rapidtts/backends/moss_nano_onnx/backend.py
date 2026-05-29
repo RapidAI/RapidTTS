@@ -8,43 +8,51 @@ import numpy as np
 
 from ...common.errors import BackendNotLoadedError
 from ...core.backend import BaseTTSBackend
+from ...core.model_assets import ensure_model_assets
 from ...core.request import SynthesisRequest
 from ...core.response import SynthesisResponse
 from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage, TTSModel
-from .model import MeloONNXConfig, MeloONNXModel
-from .postprocess import MeloONNXPostprocessor
-from .preprocess import MeloONNXPreprocessor
-from .typings import MeloONNXInput
+from .model import MOSSNanoModel
+from .postprocess import MOSSNanoPostprocessor
+from .preprocess import MOSSNanoPreprocessor
+from .typings import MOSSNanoConfig, MOSSNanoInput
 
 
-class MeloONNXBackend(BaseTTSBackend):
+class MOSSNanoBackend(BaseTTSBackend):
     def __init__(
         self,
         model_root_dir: Union[str, Path],
         device: str = "cpu",
         request_defaults: Optional[Dict[str, Any]] = None,
+        engine_cfg_defaults: Optional[Dict[str, Any]] = None,
         text_normalizer_type: str = "wetext",
-    ) -> None:
+    ):
         self.request_defaults = request_defaults or {}
+        self.engine_cfg_defaults = engine_cfg_defaults or {}
 
         self.model_root_dir = Path(model_root_dir)
-        tts_model_path = self.model_root_dir / "tts_model.onnx"
-        self.model = MeloONNXModel(
-            MeloONNXConfig(model_path=str(tts_model_path), device=device)
+        self.model = MOSSNanoModel(
+            MOSSNanoConfig(
+                model_root_dir=self.model_root_dir,
+                device=device,
+                engine_cfg_defaults=self.engine_cfg_defaults,
+            )
         )
 
-        self.preprocessor = MeloONNXPreprocessor(
+        self.preprocessor = MOSSNanoPreprocessor(
             self.model_root_dir,
             text_normalizer_type=TextNormalizerType(text_normalizer_type),
+            engine_cfg_defaults=self.engine_cfg_defaults,
+            device=device,
         )
-        self.postprocessor = MeloONNXPostprocessor()
+        self.postprocessor = MOSSNanoPostprocessor()
 
-    def infer(self, model_inputs: list[MeloONNXInput]) -> list[np.ndarray]:
+    def infer(self, model_inputs: list[MOSSNanoInput]) -> list[np.ndarray]:
         return self.model.speak(model_inputs)
 
     def preprocess(self, request: SynthesisRequest):
         if self.preprocessor is None:
-            raise BackendNotLoadedError("MeloONNXBackend is not loaded")
+            raise BackendNotLoadedError("MOSSNanoBackend is not loaded")
 
         if request.language is None:
             request.language = self.language
@@ -53,12 +61,22 @@ class MeloONNXBackend(BaseTTSBackend):
 
     def postprocess(self, audio_list, sample_rate, speed) -> SynthesisResponse:
         if self.postprocessor is None:
-            raise BackendNotLoadedError("MeloONNXBackend is not loaded")
+            raise BackendNotLoadedError("MOSSNanoBackend is not loaded")
 
-        return self.postprocessor.run(audio_list, sample_rate, speed)
+        return self.postprocessor.run(audio_list, sample_rate)
 
     def synthesize(self, request: SynthesisRequest) -> SynthesisResponse:
         request = self.normalize_request(request)
+
+        prompt_audio_path = request.extras.get("prompt_audio_path", None)
+        if prompt_audio_path is not None and Path(prompt_audio_path).is_file():
+            ensure_model_assets(
+                TTSModel.MOSS_NANO_ONNX.value,
+                local_dir=self.model_root_dir,
+                groups=["prompt_audio_encoder"],
+                include_base_files=False,
+            )
+
         return super().synthesize(request)
 
     def get_voices(self) -> list[str]:
@@ -70,12 +88,12 @@ class MeloONNXBackend(BaseTTSBackend):
     def get_capability(self) -> ModelCapability:
         defaults = self.request_defaults
         return ModelCapability(
-            name=TTSModel.MELO_ONNX.value,
+            name=TTSModel.MOSS_NANO_ONNX.value,
             languages=[TTSLanguage.ZH_MIX_EN.value],
             default_language=defaults["language"],
             voices=self.get_voices(),
             default_voice=defaults.get("voice"),
-            voice_source="configuration.json",
+            voice_source="browser_poc_manifest.json",
         )
 
     def normalize_request(self, request: SynthesisRequest) -> SynthesisRequest:
