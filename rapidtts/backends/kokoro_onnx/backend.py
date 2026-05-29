@@ -23,9 +23,11 @@ class KokoroONNXBackend(BaseTTSBackend):
         model_root_dir: Union[str, Path],
         device: str = "cpu",
         request_defaults: Optional[Dict[str, Any]] = None,
+        engine_cfg_defaults: Optional[Dict[str, Any]] = None,
         text_normalizer_type: str = "wetext",
     ) -> None:
         self.request_defaults = request_defaults or {}
+        self.engine_cfg_defaults = engine_cfg_defaults or {}
 
         voices_path = Path(model_root_dir) / "voices-v1.1-zh.bin"
         self.voices = np.load(voices_path)
@@ -100,5 +102,5 @@ class KokoroONNXBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=request.extras or defaults.get("extras", {}),
+            extras=request.extras or defaults.get("extra_params", {}),
         )

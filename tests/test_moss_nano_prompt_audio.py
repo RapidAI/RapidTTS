@@ -138,7 +138,7 @@ def test_moss_nano_backend_capability_describes_manifest_voices() -> None:
         "speed": 1.0,
         "sample_rate": 48000,
         "audio_format": "wav",
-        "extras": {},
+        "extra_params": {},
     }
     backend.preprocessor = MOSSNanoPreprocessor.__new__(MOSSNanoPreprocessor)
     backend.preprocessor.prompt_audio_processor = type(

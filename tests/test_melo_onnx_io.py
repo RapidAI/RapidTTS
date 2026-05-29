@@ -69,9 +69,11 @@ def make_backend_without_init() -> MeloONNXBackend:
         "speed": 1.0,
         "sample_rate": 44100,
         "audio_format": "wav",
-        "sdp_ratio": 0.2,
-        "noise_scale": 0.6,
-        "noise_scale_w": 0.8,
+        "extra_params": {
+            "sdp_ratio": 0.2,
+            "noise_scale": 0.6,
+            "noise_scale_w": 0.8,
+        },
     }
     backend.preprocessor = None
     backend.postprocessor = None
@@ -200,7 +202,11 @@ def test_melo_backend_normalize_request_adds_default_voice() -> None:
     assert request.sample_rate == 44100
     assert request.audio_format == "wav"
     assert request.voice == "zf_001"
-    assert request.extras == {}
+    assert request.extras == {
+        "sdp_ratio": 0.2,
+        "noise_scale": 0.6,
+        "noise_scale_w": 0.8,
+    }
 
 
 def test_melo_backend_normalize_request_allows_voice_override() -> None:

@@ -109,5 +109,5 @@ class MOSSNanoBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=request.extras or defaults.get("extras", {}),
+            extras=request.extras or defaults.get("extra_params", {}),
         )

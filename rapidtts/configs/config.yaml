@@ -13,7 +13,7 @@ moss_nano_onnx:
     speed: 1.0
     sample_rate: 48000
     audio_format: wav
-    extras:
+    extra_params:
       prompt_text: ''
       prompt_audio_path: null
 
@@ -29,7 +29,7 @@ kokoro_onnx:
     speed: 1.0
     sample_rate: 24000
     audio_format: wav
-    extras:
+    extra_params:
       max_phoneme_length: 510
 
 melo_onnx:
@@ -44,7 +44,7 @@ melo_onnx:
     speed: 1.0
     sample_rate: 44100
     audio_format: wav
-    extras:
+    extra_params:
       sdp_ratio: 0.2
       noise_scale: 0.6
       noise_scale_w: 0.8

@@ -23,9 +23,11 @@ class MeloONNXBackend(BaseTTSBackend):
         model_root_dir: Union[str, Path],
         device: str = "cpu",
         request_defaults: Optional[Dict[str, Any]] = None,
+        engine_cfg_defaults: Optional[Dict[str, Any]] = None,
         text_normalizer_type: str = "wetext",
     ) -> None:
         self.request_defaults = request_defaults or {}
+        self.engine_cfg_defaults = engine_cfg_defaults or {}
 
         self.model_root_dir = Path(model_root_dir)
         tts_model_path = self.model_root_dir / "tts_model.onnx"
@@ -91,5 +93,5 @@ class MeloONNXBackend(BaseTTSBackend):
                 else defaults["sample_rate"]
             ),
             audio_format=request.audio_format or defaults["audio_format"],
-            extras=request.extras or defaults.get("extras", {}),
+            extras=request.extras or defaults.get("extra_params", {}),
         )

@@ -106,6 +106,7 @@ def make_backend_without_init():
         "sample_rate": 24000,
         "audio_format": "wav",
         "voice": "zf_001",
+        "extra_params": {"max_phoneme_length": 510},
     }
     backend.preprocessor = None
     backend.postprocessor = None
@@ -216,6 +217,7 @@ def test_kokoro_backend_normalize_request_applies_defaults_and_extras():
     assert request.audio_format == "wav"
     assert request.voice == "zf_001"
     assert request.speed == 1.0
+    assert request.extras == {"max_phoneme_length": 510}
 
 
 def test_kokoro_backend_normalize_request_allows_request_overrides():
