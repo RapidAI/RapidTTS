@@ -20,13 +20,13 @@ RapidTTS 是一个轻量级文本转语音工具，面向本地快速推理。�
 
 ## 特性
 
-- 支持 Kokoro ONNX、MeloTTS ONNX 和 MOSS Nano ONNX 推理
+- 支持 Kokoro ONNX, MeloTTS ONNX 和 MOSS Nano ONNX 推理
 - 支持中文、英文和中英混合文本
 - 支持查询模型语言、默认参数和音色能力
 - 模型文件可自动下载，并使用 SHA256 校验
 - 同时提供 Python API 和命令行工具
 
-## [在线 demo](https://www.modelscope.cn/studios/RapidAI/RapidTTS/summary) 
+## [在线 demo](https://www.modelscope.cn/studios/RapidAI/RapidTTS/summary)
 
 <a href="https://www.modelscope.cn/studios/RapidAI/RapidTTS/summary" target="_blank"><img src="https://github.com/RapidAI/RapidTTS/releases/download/v1.2.0/online_demo.jpg"></a>
 
@@ -129,11 +129,11 @@ rapidtts text "你好，RapidTTS" outputs/zm_009.wav --model kokoro_onnx --voice
 
 ## 致谢
 
+- [MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano)
 - [kokoro](https://github.com/hexgrad/kokoro)
 - [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx)
 - [MeloTTS](https://github.com/myshell-ai/MeloTTS)
 - [melotts-onnx](https://pypi.org/project/melotts-onnx/)
-- MOSS-TTS-Nano
 - [wetext](https://github.com/pengzhendong/wetext)
 
 ## Star history
