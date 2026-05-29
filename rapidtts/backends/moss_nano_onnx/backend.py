@@ -8,6 +8,7 @@ import numpy as np
 
 from ...common.errors import BackendNotLoadedError
 from ...core.backend import BaseTTSBackend
+from ...core.model_assets import ensure_model_assets
 from ...core.request import SynthesisRequest
 from ...core.response import SynthesisResponse
 from ...core.typings import ModelCapability, TextNormalizerType, TTSLanguage, TTSModel
@@ -66,6 +67,16 @@ class MOSSNanoBackend(BaseTTSBackend):
 
     def synthesize(self, request: SynthesisRequest) -> SynthesisResponse:
         request = self.normalize_request(request)
+
+        prompt_audio_path = request.extras.get("prompt_audio_path", None)
+        if prompt_audio_path is not None and Path(prompt_audio_path).is_file():
+            ensure_model_assets(
+                TTSModel.MOSS_NANO_ONNX.value,
+                local_dir=self.model_root_dir,
+                groups=["prompt_audio_encoder"],
+                include_base_files=False,
+            )
+
         return super().synthesize(request)
 
     def get_voices(self) -> list[str]:

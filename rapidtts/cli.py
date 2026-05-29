@@ -82,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--save-dir",
         help="Directory to save model assets. Defaults to the RapidTTS package directory.",
     )
+    _add_asset_group_arguments(download_parser, action="download")
     download_parser.add_argument(
         "--quiet",
         action="store_true",
@@ -104,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--model-dir",
         help="Directory containing model assets. Defaults to the RapidTTS package directory.",
     )
+    _add_asset_group_arguments(check_parser, action="check")
     check_parser.add_argument(
         "--init-backend",
         action="store_true",
@@ -194,13 +196,33 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _add_asset_group_arguments(parser: argparse.ArgumentParser, action: str) -> None:
+    parser.add_argument(
+        "--group",
+        action="append",
+        dest="groups",
+        help=f"Optional model asset group to {action}. Can be used multiple times.",
+    )
+    parser.add_argument(
+        "--no-base-files",
+        action="store_true",
+        help=f"Only {action} selected --group assets, skipping base model files.",
+    )
+
+
 def download_model(args: argparse.Namespace) -> int:
     set_logger_enabled(not args.quiet)
+
+    include_base_files = not args.no_base_files
+    if not _validate_asset_selection(args.groups, include_base_files):
+        return 1
 
     model_dir = ensure_model_assets(
         args.model,
         local_dir=args.save_dir,
         show_progress=not args.no_progress,
+        groups=args.groups,
+        include_base_files=include_base_files,
     )
     logger.info('Model "%s" is ready at "%s"', args.model, model_dir)
     return 0
@@ -209,11 +231,20 @@ def download_model(args: argparse.Namespace) -> int:
 def check_installation(args: argparse.Namespace) -> int:
     set_logger_enabled(not args.quiet)
 
+    include_base_files = not args.no_base_files
+    if not _validate_asset_selection(args.groups, include_base_files):
+        return 1
+
     ok = True
     ok &= _check_package_import()
     ok &= _check_dependencies(args.model)
     ok &= _check_configs(args.model)
-    ok &= _check_model_files(args.model, args.model_dir)
+    ok &= _check_model_files(
+        args.model,
+        args.model_dir,
+        groups=args.groups,
+        include_base_files=include_base_files,
+    )
 
     if args.init_backend:
         ok &= _check_backend_init(args.model, args.model_dir)
@@ -224,6 +255,16 @@ def check_installation(args: argparse.Namespace) -> int:
 
     print("RapidTTS installation check failed.")
     return 1
+
+
+def _validate_asset_selection(
+    groups: Optional[list[str]], include_base_files: bool
+) -> bool:
+    if include_base_files or groups:
+        return True
+
+    print("[FAIL] --no-base-files requires at least one --group")
+    return False
 
 
 def show_model_info(args: argparse.Namespace) -> int:
@@ -408,9 +449,19 @@ def _check_configs(model_name: str) -> bool:
     return True
 
 
-def _check_model_files(model_name: str, model_dir: Optional[str]) -> bool:
+def _check_model_files(
+    model_name: str,
+    model_dir: Optional[str],
+    groups: Optional[list[str]] = None,
+    include_base_files: bool = True,
+) -> bool:
     try:
-        result = check_model_assets(model_name, local_dir=model_dir)
+        result = check_model_assets(
+            model_name,
+            local_dir=model_dir,
+            groups=groups,
+            include_base_files=include_base_files,
+        )
     except Exception as e:
         print(f"[FAIL] model assets: {model_name}: {e}")
         return False
@@ -431,11 +482,30 @@ def _check_model_files(model_name: str, model_dir: Optional[str]) -> bool:
             print(f"  - {item.name}")
 
     print("Run:")
-    command = f"  rapidtts download {model_name}"
-    if model_dir:
-        command += f" --save-dir {model_dir}"
+    command = _format_download_command(
+        model_name,
+        model_dir=model_dir,
+        groups=groups,
+        include_base_files=include_base_files,
+    )
     print(command)
     return False
+
+
+def _format_download_command(
+    model_name: str,
+    model_dir: Optional[str] = None,
+    groups: Optional[list[str]] = None,
+    include_base_files: bool = True,
+) -> str:
+    command = f"  rapidtts download {model_name}"
+    for group in groups or []:
+        command += f" --group {group}"
+    if not include_base_files:
+        command += " --no-base-files"
+    if model_dir:
+        command += f" --save-dir {model_dir}"
+    return command
 
 
 def _check_backend_init(model_name: str, model_dir: Optional[str]) -> bool:

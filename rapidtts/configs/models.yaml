@@ -10,10 +10,6 @@ moss_nano_onnx:
         sha256: e69d52e0f4e84ca27850557ee54face46632d3a5a16c89bd246c7c408466dcad
       - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_decode_step.onnx
         sha256: 9527c86a29e1837edec1f74db57d5eeaadb3a715af3382703566460afed25855
-      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.onnx
-        sha256: eadea4a645abdcf98714c7aead122ee2ce7da6e080f9f80b977cd1ca8e19473a
-      - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.data
-        sha256: aa751265b2bab2887eac224484546b194875aa7494b607115439b3dc6b228a2c
       - name: MOSS-TTS-Nano-100M-ONNX/browser_poc_manifest.json
         sha256: 097d80e993dc29f0bae427590b4f77084a161cb578b50d82c29f455d5faa9eee
       - name: MOSS-TTS-Nano-100M-ONNX/moss_tts_decode_step.onnx
@@ -34,6 +30,12 @@ moss_nano_onnx:
         sha256: c353ee1479b536bf414c1b247f5542b6607fb8ae91320e5af1781fee200fddff
       - name: MOSS-TTS-Nano-100M-ONNX/tts_browser_onnx_meta.json
         sha256: 1dacbf4d59732ae1fb1253139b70a4ca07415246fb6473919c9947d489a59e04
+  optional_files:
+    prompt_audio_encoder:
+        - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.onnx
+          sha256: eadea4a645abdcf98714c7aead122ee2ce7da6e080f9f80b977cd1ca8e19473a
+        - name: MOSS-Audio-Tokenizer-Nano-ONNX/moss_audio_tokenizer_encode.data
+          sha256: aa751265b2bab2887eac224484546b194875aa7494b607115439b3dc6b228a2c
 
 kokoro_onnx:
   base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/master/models/kokoro/onnx

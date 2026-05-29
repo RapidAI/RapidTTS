@@ -5,8 +5,8 @@ RapidTTS 安装后会提供 `rapidtts` 命令。CLI 适合下载模型、检查�
 ## 命令速查
 
 ```bash
-rapidtts download [MODEL] [--save-dir DIR] [--no-progress] [--quiet]
-rapidtts check [MODEL] [--model-dir DIR] [--init-backend] [--quiet]
+rapidtts download [MODEL] [--save-dir DIR] [--group GROUP] [--no-base-files] [--no-progress] [--quiet]
+rapidtts check [MODEL] [--model-dir DIR] [--group GROUP] [--no-base-files] [--init-backend] [--quiet]
 rapidtts info [MODEL] [--model-dir DIR] [--quiet]
 rapidtts voices [MODEL] [--model-dir DIR] [--quiet]
 rapidtts text TEXT OUTPUT [--model MODEL] [--model-dir DIR] [--language ZH|EN|ZH_MIX_EN] [--voice VOICE] [--speed SPEED] [--sample-rate SAMPLE_RATE] [--quiet]
@@ -16,6 +16,7 @@ rapidtts text TEXT OUTPUT [--model MODEL] [--model-dir DIR] [--language ZH|EN|ZH
 
 - `kokoro_onnx`：默认后端
 - `melo_onnx`：MeloTTS ONNX 后端
+- `moss_nano_onnx`：MOSS Nano ONNX 后端
 
 ## 生成音频
 
@@ -108,6 +109,18 @@ rapidtts download kokoro_onnx --save-dir /path/to/kokoro_onnx
 rapidtts download kokoro_onnx --no-progress
 ```
 
+下载可选模型文件组：
+
+```bash
+rapidtts download moss_nano_onnx --group prompt_audio_encoder
+```
+
+只下载可选模型文件组，不重复处理基础模型文件：
+
+```bash
+rapidtts download moss_nano_onnx --group prompt_audio_encoder --no-base-files
+```
+
 ## 检查安装
 
 检查默认模型和依赖：
@@ -132,6 +145,12 @@ rapidtts check kokoro_onnx --model-dir /path/to/kokoro_onnx
 
 ```bash
 rapidtts check kokoro_onnx --init-backend
+```
+
+检查可选模型文件组：
+
+```bash
+rapidtts check moss_nano_onnx --group prompt_audio_encoder --no-base-files
 ```
 
 ## 关闭日志

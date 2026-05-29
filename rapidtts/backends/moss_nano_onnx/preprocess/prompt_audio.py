@@ -48,7 +48,6 @@ class PromptAudioProcessor:
 
     def resolve_prompt_audio_codes(
         self,
-        *,
         voice: Optional[str],
         prompt_audio_path: Optional[Union[str, Path]] = None,
     ) -> List[List[int]]:
