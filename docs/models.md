@@ -2,6 +2,8 @@
 
 RapidTTS 的模型选择由 `TTSModel` 或 CLI 的 `MODEL` 参数控制。当前支持 `kokoro_onnx`、`melo_onnx` 和 `moss_nano_onnx`。
 
+模型托管在：[魔搭平台](https://www.modelscope.cn/models/RapidAI/RapidTTS/tree/master/models)
+
 ## 支持矩阵
 
 |模型|模型存储大小|语言|音色|默认采样率|说明|
