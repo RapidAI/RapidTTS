@@ -1,5 +1,5 @@
 moss_nano_onnx:
-  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/master/models/moss/nano/onnx
+  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/v1.3.0/models/moss/nano/onnx
   local_dir: models/moss_nano_onnx
   files:
       - name: MOSS-Audio-Tokenizer-Nano-ONNX/codec_browser_onnx_meta.json
@@ -38,7 +38,7 @@ moss_nano_onnx:
           sha256: aa751265b2bab2887eac224484546b194875aa7494b607115439b3dc6b228a2c
 
 kokoro_onnx:
-  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/master/models/kokoro/onnx
+  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/v1.3.0/models/kokoro/onnx
   local_dir: models/kokoro_onnx
   files:
     - name: kokoro-v1.1-zh.onnx
@@ -49,7 +49,7 @@ kokoro_onnx:
       sha256: bc333efa5ce4ceff433c8c8e5d027a1eca0166001e4e4a62bea2d26ff7a46890
 
 melo_onnx:
-  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/master/models/melotts/onnx
+  base_url: https://www.modelscope.cn/models/RapidAI/RapidTTS/resolve/v1.3.0/models/melotts/onnx
   local_dir: models/melotts_zh_mix_en_onnx
   files:
     - name: bert_lml_model.onnx
